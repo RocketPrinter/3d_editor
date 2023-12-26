@@ -24,6 +24,7 @@ endif()
 
 add_executable(3d_editor src/main.cpp
         src/rendering.cpp
+        src/object.cpp
         src/misc.cpp)
 #set(raylib_VERBOSE 1)
 target_link_libraries(3d_editor raylib)
