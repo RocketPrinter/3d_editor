@@ -79,7 +79,6 @@ void render(std::vector<RenderTrig> trigs, bool draw_stats) {
                 if (dot > 0) front++;
                 else if (dot < 0) behind++;
             }
-            std::cout << '\n';
 
             if (front == 3) {
                 dependencies++;
