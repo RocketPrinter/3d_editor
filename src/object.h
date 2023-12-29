@@ -24,19 +24,19 @@ struct Object {
 
     std::string name{"New object"};
 
-    ray::Vector3 position{}, scale{};
-    ray::Quaternion rotation{};
+    ray::Vector3 position{}, scale{1,1,1};
+    ray::Quaternion rotation = ray::QuaternionIdentity();
 
     std::vector<ray::Vector3> vertices{};
-    std::vector<int> triangle_indexes{};
+    std::vector<int> triangle_indexes{}; // CCW winding order
     std::vector<ray::Color> triangle_colors{};
 
     std::vector<Object> children{};
 
     std::string lua_path{}; // only used if type is LuaGenerated
 
-    void render(RenderContext &ctx, ray::Matrix parent_transform);
-    ray::Matrix transform_matrix();
+    ray::Matrix get_model_matrix();
+    void render(RenderContext &ctx, ray::Matrix &parent_transform);
     RaycastResult& raycast(Ray r);
 
     static Object new_plane();
@@ -50,10 +50,11 @@ struct Object {
 
 struct World {
     struct CameraSettings {
-        ray::Vector3 position{}, forward{}, up{};
-
+        ray::Vector3 position{1.5, 2, 2.5}, target{0,0,0}, up{0, 1, 0};
         bool is_perspective = true;
         float fov = PI/2.; // ignored if is_perspective = false
+
+        ray::Matrix get_view_projection_matrix();
     } camera{};
     std::vector<Object> objects{};
 

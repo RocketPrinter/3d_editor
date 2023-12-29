@@ -105,10 +105,10 @@ void render(std::vector<RenderTrig> trigs, bool draw_stats) {
     // draw statistics
     if (!draw_stats) return;
 
-    ray::DrawText(ray::TextFormat("clipped triangles: %u", clipped_triangles), 20, 20, 10, ray::GRAY);
-    ray::DrawText(ray::TextFormat("aabb_intersections: %u", aabb_intersections), 20, 40, 10, ray::GRAY);
+    ray::DrawText(ray::TextFormat("clipped triangles: %u", clipped_triangles), 20, 40, 10, ray::GRAY);
+    ray::DrawText(ray::TextFormat("aabb_intersections: %u", aabb_intersections), 20, 50, 10, ray::GRAY);
     ray::DrawText(ray::TextFormat("dependencies: %u", dependencies), 20, 60, 10, ray::GRAY);
-    //ray::DrawText(ray::TextFormat("intersections: %u", intersections), 20, 80, 10, ray::RED);
+    ray::DrawText(ray::TextFormat("intersections: %u", intersections), 20, 70, 10, ray::RED);
 }
 
 ray::Vector2 clip_to_screen_space(ray::Vector3 v3) {

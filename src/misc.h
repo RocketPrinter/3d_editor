@@ -19,3 +19,6 @@ const int screenHeight = 450;
 const char* v3_to_text(ray::Vector3 v);
 const char* v4_to_text(ray::Vector4 v);
 const char* trig_to_text(ray::Vector3 trig[3]);
+
+void draw_debug(const char *text, ray::Color color = ray::GRAY);
+void reset_draw_debug();
