@@ -56,7 +56,7 @@ ray::Matrix World::CameraSettings::get_view_projection_matrix() {
             ray::MatrixLookAt(position, target, up),
             is_perspective ?
                 // perspective projection matrix
-                ray::MatrixPerspective(fov, screenWidth / (float) screenHeight, 1, 5.) :
+                ray::MatrixPerspective(fov, screenWidth / (float) screenHeight, 1, 200) :
                 // todo: orthographic projection matrix
                 ray::Matrix{}
             );
