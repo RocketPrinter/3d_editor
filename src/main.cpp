@@ -288,5 +288,5 @@ void executeSaveAsCPP(){
     mesajMenu = "SaveAs CPP";
 };
 void executeSaveAsJSon(){
-    mesajMenu = "SaveAs JSon";
+    mesajMenu = "SaveAs JSON";
 };
