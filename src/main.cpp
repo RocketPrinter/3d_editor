@@ -1,10 +1,6 @@
-#include <vector>
-#include <iostream>
-#include "misc.h"
-#include "rendering.h"
 #include "object.h"
+#include "misc.h"
 
-void test_render(World &world);
 void test_config(World &world);
 
 int main()
@@ -20,7 +16,7 @@ int main()
         ray::BeginDrawing();
         ClearBackground(ray::RAYWHITE);
 
-        test_render(world);
+        world.render();
         test_config(world);
 
         reset_draw_debug();
@@ -33,32 +29,6 @@ int main()
     return 0;
 }
 
-void test_render(World &world) {
-    std::vector<RenderTrig> render_trigs;
-
-    ray::Matrix vp_matrix = world.camera.get_view_projection_matrix();
-
-    for (Object &cube: world.objects) {
-        ray::Matrix mvp_matrix = ray::MatrixMultiply(cube.get_model_matrix(), vp_matrix);
-
-        std::vector<ray::Vector3> transformed_vertices{};
-        for (auto v: cube.vertices) {
-            // homogeneous coordinates
-            ray::Vector4 v4 = ray::Vector4Transform(ray::Vector4FromVector3(v, 1.), mvp_matrix);
-            // perspective divide/normalization
-            ray::Vector3 result = ray::Vector3{v4.x/v4.w, v4.y/v4.w, v4.z/v4.w};
-            transformed_vertices.push_back(result);
-        }
-
-        int trig_count = cube.triangle_indexes.size() / 3;
-        for (int i=0;i<trig_count;i++) {
-            render_trigs.push_back(RenderTrig{transformed_vertices[cube.triangle_indexes[i*3]], transformed_vertices[cube.triangle_indexes[i*3 + 1]], transformed_vertices[cube.triangle_indexes[i*3 + 2]], cube.triangle_colors[i]});
-        }
-    }
-
-    render(render_trigs, true);
-}
-
 int editing=0, cube_index=0;
 void test_config(World &world) {
     auto &cam = world.camera;
@@ -69,7 +39,7 @@ void test_config(World &world) {
     }
 
     ray::Vector3 input{};
-     if (ray::IsKeyDown(ray::KEY_A))input.x -= 0.02;
+    if (ray::IsKeyDown(ray::KEY_A))input.x -= 0.02;
     if (ray::IsKeyDown(ray::KEY_D))input.x += 0.02;
     if (ray::IsKeyDown(ray::KEY_W))input.y -= 0.02;
     if (ray::IsKeyDown(ray::KEY_S))input.y += 0.02;
@@ -109,12 +79,15 @@ void test_config(World &world) {
             break;
     }
 
-    draw_debug(ray::TextFormat("cam position: %s", v3_to_text(cam.position)), editing==0?ray::GREEN:ray::GRAY);
-    draw_debug(ray::TextFormat("cam target: %s", v3_to_text(cam.target)), editing==1?ray::GREEN:ray::GRAY);
-    draw_debug(ray::TextFormat("cam up: %s", v3_to_text(cam.up)), editing==2?ray::GREEN:ray::GRAY);
-    draw_debug(ray::TextFormat("cam fov: %f", cam.fov*180./PI), editing==3?ray::GREEN:ray::GRAY);
+    debug_text(ray::TextFormat("cam position: %s", v3_to_text(cam.position)), editing == 0 ? ray::GREEN : ray::GRAY);
+    debug_text(ray::TextFormat("cam target: %s", v3_to_text(cam.target)), editing == 1 ? ray::GREEN : ray::GRAY);
+    debug_text(ray::TextFormat("cam up: %s", v3_to_text(cam.up)), editing == 2 ? ray::GREEN : ray::GRAY);
+    debug_text(ray::TextFormat("cam fov: %f", cam.fov * 180. / PI), editing == 3 ? ray::GREEN : ray::GRAY);
 
-    draw_debug(ray::TextFormat("cube #%d position: %s", cube_index, v3_to_text(cube.position)), editing==4?ray::GREEN:ray::GRAY);
-    draw_debug(ray::TextFormat("cube #%d rotation: %s", cube_index, v3_to_text(ray::QuaternionToEuler(cube.rotation))), editing==5?ray::GREEN:ray::GRAY);
-    draw_debug(ray::TextFormat("cube #%d scale: %s", cube_index, v3_to_text(cube.scale)), editing==6?ray::GREEN:ray::GRAY);
+    debug_text(ray::TextFormat("cube #%d position: %s", cube_index, v3_to_text(cube.position)),
+               editing == 4 ? ray::GREEN : ray::GRAY);
+    debug_text(ray::TextFormat("cube #%d rotation: %s", cube_index, v3_to_text(ray::QuaternionToEuler(cube.rotation))),
+               editing == 5 ? ray::GREEN : ray::GRAY);
+    debug_text(ray::TextFormat("cube #%d scale: %s", cube_index, v3_to_text(cube.scale)),
+               editing == 6 ? ray::GREEN : ray::GRAY);
 }

@@ -36,10 +36,10 @@ struct Object {
     std::string lua_path{}; // only used if type is LuaGenerated
 
     ray::Matrix get_model_matrix();
-    void render(RenderContext &ctx, ray::Matrix &parent_transform);
+    void add_to_render(Renderer &renderer, ray::Matrix &parent_transform);
     RaycastResult& raycast(Ray r);
 
-    static Object new_plane();
+    static Object new_triangle();
     static Object new_cube();
     static Object new_iso_sphere();
     static Object new_cylinder();
@@ -58,6 +58,6 @@ struct World {
     } camera{};
     std::vector<Object> objects{};
 
-    void render();
+    void render(bool debug_render = false);
     RaycastResult& raycast(Ray r);
 };
