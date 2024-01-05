@@ -51,8 +51,7 @@ struct Object {
 struct World {
     struct CameraSettings {
         ray::Vector3 position{1.5, 2, 2.5}, target{0,0,0}, up{0, 1, 0};
-        bool is_perspective = true;
-        float fov = PI/2.; // ignored if is_perspective = false
+        float fov = PI/2.;
 
         ray::Matrix get_view_projection_matrix();
     } camera{};

@@ -87,11 +87,8 @@ ray::Matrix World::CameraSettings::get_view_projection_matrix() {
     matrix = ray::MatrixMultiply(
             // view matrix
             ray::MatrixLookAt(position, target, up),
-            is_perspective ?
-                // perspective projection matrix
-                ray::MatrixPerspective(fov, aspect_ratio, 1, 200) :
-                // todo: orthographic projection matrix
-                ray::Matrix{}
+            // perspective projection matrix
+            ray::MatrixPerspective(fov, aspect_ratio, 1, 200)
             );
 
     // projection matrix flips the handedness for some reason so we unflip it and substract one on the z axis so it's in the range (-inf, 0]

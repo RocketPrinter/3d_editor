@@ -4,7 +4,7 @@
 #include "misc.h"
 
 /// DEBUG
-int culled = 0, sliced = 0, discarded = 0, drawn = 0;
+int original = 0, culled = 0, nodes = 0, sliced = 0, discarded = 0, drawn = 0;
 
 float Plane::distance(ray::Vector3 point) {
     return -(ray::Vector3DotProduct(point,normal) + offset);
@@ -42,6 +42,7 @@ BSPNode::BSPNode(Triangle trig, Plane plane) {
 
     trig_vertices = {trig.v0,trig.v1,trig.v2};
     trig_colors = {trig.col};
+    nodes++;
 }
 
 void BSPNode::add_above(Triangle trig, Plane p) {
@@ -72,7 +73,6 @@ void BSPNode::add(Triangle trig, Plane p) {
         float v0_dist = plane.distance(trig.v0);
         float v1_dist = plane.distance(trig.v1);
         float v2_dist = plane.distance(trig.v2);
-        //debug_text(ray::TextFormat("%s",v3_to_text(ray::Vector3{v0_dist,v1_dist,v2_dist})));
 
         if (v0_dist >= 0 && v1_dist >= 0 && v2_dist >= 0)
             // triangle is v_above plane
@@ -84,21 +84,33 @@ void BSPNode::add(Triangle trig, Plane p) {
 
         sliced++;
 
-        int v_above=0,v_below=0;
-        ray::Vector3 above_arr[3], below_arr[3];
-        if (v0_dist > 0) above_arr[v_above++]=trig.v0; else below_arr[v_below++]=trig.v0;
-        if (v1_dist > 0) above_arr[v_above++]=trig.v1; else below_arr[v_below++]=trig.v1;
-        if (v2_dist > 0) above_arr[v_above++]=trig.v2; else below_arr[v_below++]=trig.v2;
+        int v_above=0,v_below=0, v_zero=0;
+        ray::Vector3 above_arr[3], below_arr[3], zero;
+        if (v0_dist > 0) above_arr[v_above++]=trig.v0; else if (v0_dist < 0) below_arr[v_below++]=trig.v0; else zero=trig.v0,v_zero++;
+        if (v1_dist > 0) above_arr[v_above++]=trig.v1; else if (v1_dist < 0) below_arr[v_below++]=trig.v1; else zero=trig.v1,v_zero++;
+        if (v2_dist > 0) above_arr[v_above++]=trig.v2; else if (v2_dist < 0) below_arr[v_below++]=trig.v2; else zero=trig.v2,v_zero++;
 
-        if(v_above == 3 || v_below == 3 || v_above + v_below != 3) {
+        if(v_above == 3 || v_below == 3 || v_above + v_below + v_zero != 3 || v_zero > 1) {
             // something is wrong, discarding triangle
-            debug_text(ray::TextFormat("discarding %s", trig_to_text(trig.v0,trig.v1,trig.v2)), ray::RED);
+            debug_text(ray::TextFormat("error dist:%s v_nr:%d %d %d", v3_to_text(ray::Vector3 {v0_dist, v1_dist, v2_dist}), v_above, v_below, v_zero), ray::RED);
             discarded++;
             return;
         }
 
         ray::Vector3 intersection_a, intersection_b;
-        if (v_above == 1) {
+        if (v_zero == 1) {
+            // handling special case, one point is on the plane while one is above and another is below
+            intersection_a = plane.line_intersection(above_arr[0], below_arr[0]);
+            if (!ray::Vector3Finite(intersection_a)) {
+                discarded++;return;
+            }
+            add_above(Triangle {
+                    .v0 = above_arr[0], .v1 = zero, .v2 = intersection_a, .col = trig.col,
+            }.ccw(), p);
+            add_below(Triangle {
+                    .v0 = below_arr[0], .v1 = zero, .v2 = intersection_a, .col = trig.col,
+            }.ccw(), p);
+        } else if (v_above == 1) {
             //trapezoid is v_below
             intersection_a = plane.line_intersection(above_arr[0], below_arr[0]);
             intersection_b = plane.line_intersection(above_arr[0], below_arr[1]);
@@ -171,6 +183,7 @@ void BSPNode::draw_debug(int previous) {
 }
 
 bool Renderer::cull_or_add_to_bsp_tree(Triangle trig) {
+    original++;
     auto aabb_min = ray::Vector3Min(trig.v0, ray::Vector3Min(trig.v1,trig.v2));
     auto aabb_max = ray::Vector3Max(trig.v0, ray::Vector3Max(trig.v1,trig.v2));
 
@@ -203,8 +216,9 @@ void Renderer::draw(bool debug) {
     } else
         root->draw();
 
-    debug_text(ray::TextFormat("renderer: culled=%d sliced=%d discarded=%d drawn=%d", culled, sliced, discarded, drawn));
-    culled = 0, sliced = 0, discarded = 0, drawn = 0;
+    debug_text(ray::TextFormat("renderer: original=%d culled=%d nodes=%d", original, culled, nodes));
+    debug_text(ray::TextFormat("sliced=%d discarded=%d drawn=%d", sliced, discarded, drawn));
+    original = 0, culled = 0, nodes = 0, sliced = 0, discarded = 0, drawn = 0;
 }
 
 ray::Vector2 clip_to_screen_space(ray::Vector3 v3) {
