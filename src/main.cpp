@@ -1,11 +1,14 @@
 #include <vector>
 #include <iostream>
+#include <fstream>
 #include <string>
 #include "misc.h"
 #include "rendering.h"
 #include "object.h"
 #define RAYGUI_IMPLEMENTATION
 #include "raygui.h"
+#include <nlohmann/json.hpp>
+using json = nlohmann::json;
 
 #define ARRAY_SIZE(A) (sizeof(A)/sizeof(A[0]))
 
@@ -54,13 +57,135 @@ void executeSaveAsDatabase();
 void executeSaveAsCPP();
 void executeSaveAsJSon();
 
-
 char* mesajMenu = "";
 
 void test_render(World &world);
 void test_config(World &world);
+static World world{};
 
-static void HandleMenu(int *state, int *mainActive, int *mainFocused, int *subActive, int *scrollIndex, ray::Rectangle* menuRec ){
+static json serializeObj(Object &cube){
+    json obj;
+    obj["name"] = cube.name;
+    obj["position"]["x"] = cube.position.x;
+    obj["position"]["y"] = cube.position.y;
+    obj["position"]["z"] = cube.position.z;
+    obj["scale"]["x"] = cube.scale.x;
+    obj["scale"]["y"] = cube.scale.y;
+    obj["scale"]["z"] = cube.scale.z;
+    obj["rotation"]["x"] = cube.rotation.x;
+    obj["rotation"]["y"] = cube.rotation.y;
+    obj["rotation"]["z"] = cube.rotation.z;
+    obj["rotation"]["w"] = cube.rotation.w;
+    obj["vertices"] = json::array();
+    for (ray::Vector3 &vert: cube.vertices) {
+        json vertices;
+        vertices["x"] = vert.x;
+        vertices["y"] = vert.y;
+        vertices["z"] = vert.z;
+        obj["vertices"].push_back(vertices);
+    }
+    obj["triangle_indexes"] = json::array();
+    for (int i: cube.triangle_indexes) {
+        obj["triangle_indexes"]. push_back(i);
+    }
+    obj["triangle_colors"] = json::array();
+    for (ray::Color &clr: cube.triangle_colors) {
+        json colors;
+        colors["r"] = clr.r;
+        colors["g"] = clr.g;
+        colors["b"] = clr.b;
+        colors["a"] = clr.a;
+        obj["triangle_colors"].push_back(colors);
+    }
+    obj["children"]=json::array();
+    for (Object &cub :cube.children) {
+        json temp = serializeObj(cub);
+        obj["children"].push_back(temp);
+    }
+    return obj;
+}
+static json serialize(World &world){
+    json j;
+    j["camera"]["position"]["x"] = world.camera.position.x;
+    j["camera"]["position"]["y"] = world.camera.position.y;
+    j["camera"]["position"]["z"] = world.camera.position.z;
+    j["camera"]["target"]["x"] = world.camera.target.x;
+    j["camera"]["target"]["y"] = world.camera.target.y;
+    j["camera"]["target"]["z"] = world.camera.target.z;
+    j["camera"]["up"]["x"] = world.camera.up.x;
+    j["camera"]["up"]["y"] = world.camera.up.y;
+    j["camera"]["up"]["z"] = world.camera.up.z;
+    j["camera"]["is_perspective"] = world.camera.is_perspective;
+    j["objects"] = json::array();
+    for (Object &cube: world.objects) {
+        json obj;
+        obj= serializeObj(cube);
+        j["objects"].push_back(obj);
+    }
+    return j;
+}
+
+json ReadJsonFromFile(std::string file_name) {
+    try {
+        return json::parse(std::ifstream{file_name, std::ios::in});
+    } catch (json::parse_error& e) {
+        std::cerr << "JSON parse exception : " << e.what() << std::endl;
+    } catch (std::ifstream::failure& e) {
+        std::cerr << "Stream exception : " << e.what() << std::endl;
+    } catch (std::exception& e) {
+        std::cerr << "Exception : " << e.what() << std::endl;
+    } catch (...) {
+        std::cerr << "Unk error" << std::endl;
+    }
+    return {};
+}
+static Object deserializeObj(json &jObj){
+    Object obj = Object::new_cube();
+    obj.name = jObj["name"] ;
+    obj.position.x = jObj["position"]["x"];
+    obj.position.y = jObj["position"]["y"];
+    obj.position.z = jObj["position"]["z"];
+    obj.scale.x = jObj["scale"]["x"];
+    obj.scale.y = jObj["scale"]["y"];
+    obj.scale.z = jObj["scale"]["z"];
+    obj.rotation.x = jObj["rotation"]["x"];
+    obj.rotation.y = jObj["rotation"]["y"];
+    obj.rotation.z = jObj["rotation"]["z"];
+    obj.rotation.w = jObj["rotation"]["w"];
+    for(json& vrt : jObj["vertices"]) {
+        ray::Vector3  vertice;
+        vertice.x = vrt["x"];
+        vertice.y = vrt["y"];
+        vertice.z = vrt["z"];
+        obj.vertices.push_back(vertice);
+    }
+    for (json& child:jObj["children"]){
+        obj.children.push_back(deserializeObj(child));
+    }
+    return obj;
+}
+static bool deserialize(){
+    json jInput = ReadJsonFromFile("file.out");
+    if (jInput.empty()) {
+        return false;
+    }
+    world.camera.position.x = jInput["camera"]["position"]["x"] ;
+    world.camera.position.y = jInput["camera"]["position"]["y"] ;
+    world.camera.position.z = jInput["camera"]["position"]["z"] ;
+    world.camera.target.x = jInput["camera"]["target"]["x"] ;
+    world.camera.target.y = jInput["camera"]["target"]["y"] ;
+    world.camera.target.z = jInput["camera"]["target"]["z"] ;
+    world.camera.up.x = jInput["camera"]["up"]["x"] ;
+    world.camera.up.y = jInput["camera"]["up"]["y"] ;
+    world.camera.up.z = jInput["camera"]["up"]["z"] ;
+    world.camera.is_perspective = jInput["camera"]["is_perspective"];
+    for(json& o : jInput["objects"]) {
+        world.objects.push_back(deserializeObj(o)) ;
+    }
+
+    return true;
+}
+static void HandleMenu(int *state, int *mainActive, int *mainFocused, int *subActive, int *scrollIndex, ray::Rectangle* menuRec){
 
     const char* menuItems[] = { "New", "Open", "Save", "Save As", "Exit" };
     const char* submenuNew[] = {"Project", "Database", "Workspace"};
@@ -152,8 +277,9 @@ int main()
     ray::InitWindow(screenWidth, screenHeight, "Editor 3D");
     ray::SetTargetFPS(60);
 
-    World world{};
-    world.objects.push_back(Object::new_cube());
+   if (not deserialize()) {
+       world.objects.push_back(Object::new_cube());
+   };
     // Main game loop
     while (!ray::WindowShouldClose())    // Detect window close button or ESC key
     {
@@ -177,6 +303,9 @@ int main()
 
 void test_render(World &world) {
     std::vector<RenderTrig> render_trigs;
+    //todo : asta e numa sa vedem ca face ceva la debug
+    json s = serialize(world);
+    std::string JSON{s.dump()};
 
     ray::Matrix vp_matrix = world.camera.get_view_projection_matrix();
 
@@ -288,5 +417,12 @@ void executeSaveAsCPP(){
     mesajMenu = "SaveAs CPP";
 };
 void executeSaveAsJSon(){
-    mesajMenu = "SaveAs JSON";
+    std::ofstream jsonFile;
+    jsonFile.open("file.out", std::ofstream::out | std::ofstream::trunc);
+    if (jsonFile.is_open()) {
+        json s = serialize(world);
+        std::string str{s.dump()};
+        jsonFile<<str;
+        jsonFile.close();
+    }
 };
