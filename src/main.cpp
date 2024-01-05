@@ -11,10 +11,13 @@ int main()
     World world{};
     world.objects.push_back(Object::new_cube());
     // Main game loop
-    while (!ray::WindowShouldClose())    // Detect window close button or ESC key
+    while (!ray::WindowShouldClose())
     {
         ray::BeginDrawing();
         ClearBackground(ray::RAYWHITE);
+
+        if (ray::IsKeyPressed(ray::KEY_SLASH)) world.debug_render = !world.debug_render;
+        world.camera.input_movement();
 
         world.render();
         test_config(world);
@@ -35,16 +38,16 @@ void test_config(World &world) {
     Object &cube = world.objects[cube_index];
 
     if (ray::IsKeyPressed(ray::KEY_SPACE)) {
-        editing = (editing + 1) % 7;
+        editing = (editing + 1) % 3;
     }
 
     ray::Vector3 input{};
-    if (ray::IsKeyDown(ray::KEY_A))input.x -= 0.02;
-    if (ray::IsKeyDown(ray::KEY_D))input.x += 0.02;
-    if (ray::IsKeyDown(ray::KEY_W))input.y -= 0.02;
-    if (ray::IsKeyDown(ray::KEY_S))input.y += 0.02;
-    if (ray::IsKeyDown(ray::KEY_Q))input.z -= 0.02;
-    if (ray::IsKeyDown(ray::KEY_E))input.z += 0.02;
+    if (ray::IsKeyDown(ray::KEY_J))input.x -= 0.02;
+    if (ray::IsKeyDown(ray::KEY_L))input.x += 0.02;
+    if (ray::IsKeyDown(ray::KEY_I))input.y -= 0.02;
+    if (ray::IsKeyDown(ray::KEY_K))input.y += 0.02;
+    if (ray::IsKeyDown(ray::KEY_U))input.z -= 0.02;
+    if (ray::IsKeyDown(ray::KEY_O))input.z += 0.02;
 
     for (int i=0; i <= world.objects.size() && i < 10; i++) {
         if (ray::IsKeyPressed(ray::KEY_ZERO + i)) {
@@ -57,37 +60,20 @@ void test_config(World &world) {
 
     switch (editing) {
         case 0:
-            cam.position = ray::Vector3Add(cam.position, input);
-            break;
-        case 1:
-            cam.target = ray::Vector3Add(cam.target, input);
-            break;
-        case 2:
-            cam.up = ray::Vector3Add(cam.up, input);
-            break;
-        case 3:
-            cam.fov += input.x;
-            break;
-        case 4:
             cube.position = ray::Vector3Add(cube.position, input);
             break;
-        case 5:
+        case 1:
             cube.rotation = ray::QuaternionMultiply(ray::QuaternionFromEuler(input.x,input.y,input.z), cube.rotation);
             break;
-        case 6:
+        case 2:
             cube.scale = ray::Vector3Add(cube.scale, input);
             break;
     }
 
-    debug_text(ray::TextFormat("cam position: %s", v3_to_text(cam.position)), editing == 0 ? ray::GREEN : ray::GRAY);
-    debug_text(ray::TextFormat("cam target: %s", v3_to_text(cam.target)), editing == 1 ? ray::GREEN : ray::GRAY);
-    debug_text(ray::TextFormat("cam up: %s", v3_to_text(cam.up)), editing == 2 ? ray::GREEN : ray::GRAY);
-    debug_text(ray::TextFormat("cam fov: %f", cam.fov * 180. / PI), editing == 3 ? ray::GREEN : ray::GRAY);
-
     debug_text(ray::TextFormat("cube #%d position: %s", cube_index, v3_to_text(cube.position)),
-               editing == 4 ? ray::GREEN : ray::GRAY);
+               editing == 0 ? ray::GREEN : ray::GRAY);
     debug_text(ray::TextFormat("cube #%d rotation: %s", cube_index, v3_to_text(ray::QuaternionToEuler(cube.rotation))),
-               editing == 5 ? ray::GREEN : ray::GRAY);
+               editing == 1 ? ray::GREEN : ray::GRAY);
     debug_text(ray::TextFormat("cube #%d scale: %s", cube_index, v3_to_text(cube.scale)),
-               editing == 6 ? ray::GREEN : ray::GRAY);
+               editing == 2 ? ray::GREEN : ray::GRAY);
 }

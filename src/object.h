@@ -50,13 +50,16 @@ struct Object {
 
 struct World {
     struct CameraSettings {
-        ray::Vector3 position{1.5, 2, 2.5}, target{0,0,0}, up{0, 1, 0};
-        float fov = PI/2.;
+        // camera is orbiting around the target
+        ray::Vector3 target{0,0,0};
+        float yaw=PI/5, pitch=-PI/4.2, distance = 4, fov = PI/2.;
 
+        void input_movement();
         ray::Matrix get_view_projection_matrix();
     } camera{};
     std::vector<Object> objects{};
+    bool debug_render = false;
 
-    void render(bool debug_render = false);
+    void render();
     RaycastResult& raycast(Ray r);
 };

@@ -23,7 +23,7 @@ struct Triangle {
 
 // a binary space partitioning tree is used to accurately z-sort the triangles
 // each node divides the world using a plane, triangles can be above the plane, below the plane, intersecting the plane or on the plane
-class BSPNode {
+struct BSPNode {
     Plane plane;
 
     // triangles that are on the plane, 3 vertices = 1 triangle
@@ -36,7 +36,6 @@ class BSPNode {
     void add_above(Triangle trig, Plane p);
     void add_below(Triangle trig, Plane p);
 
-public:
     BSPNode(Triangle trig, Plane plane);
 
     void add(Triangle trig, Plane p);
@@ -44,9 +43,9 @@ public:
     void draw_debug(int previous);
 };
 
-class Renderer {
+struct Renderer {
     std::unique_ptr<BSPNode> root{};
-public:
+
     // clips triangles, checks their winding order and adds them to the BSP tree if visible on the screen
     // for this purpose clip space is defined as: [-1, 1] on x and y axis and [-inf, 0] on z axis (right handed)
     bool cull_or_add_to_bsp_tree(Triangle trig);
