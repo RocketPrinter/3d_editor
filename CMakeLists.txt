@@ -21,6 +21,7 @@ if (NOT raylib_FOUND) # If there's none, fetch and build raylib
         add_subdirectory(${raylib_SOURCE_DIR} ${raylib_BINARY_DIR})
     endif()
 endif()
+
 set(NLOHMANN_VERSION 3.11.3)
 find_package(nlohmann_json  ${NLOHMANN_VERSION} QUIET) # QUIET or REQUIRED
 if (NOT nlohmann_json_FOUND)
@@ -37,6 +38,8 @@ endif()
 add_executable(3d_editor src/main.cpp
         src/rendering.cpp
         src/object.cpp
-        src/misc.cpp)
+        src/misc.cpp
+        src/serialization.cpp
+        src/serialization.h)
 #set(raylib_VERBOSE 1)
 target_link_libraries(3d_editor raylib nlohmann_json::nlohmann_json)

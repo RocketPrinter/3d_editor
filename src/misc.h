@@ -16,7 +16,6 @@ namespace ray {
     inline bool Vector3Finite(Vector3 v) {
         return isfinite(v.x) && isfinite(v.y) && isfinite(v.z);
     }
-
 }
 
 const int screenWidth = 800;

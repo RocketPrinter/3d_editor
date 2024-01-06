@@ -3,10 +3,11 @@
 #include <fstream>
 #include <string>
 #include "misc.h"
-#include "rendering.h"
 #include "object.h"
 #define RAYGUI_IMPLEMENTATION
-#include "raygui.h"
+#include "lib/raygui.h"
+#include "serialization.h"
+
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
@@ -106,16 +107,6 @@ static json serializeObj(Object &cube){
 }
 static json serialize(World &world){
     json j;
-    j["camera"]["position"]["x"] = world.camera.position.x;
-    j["camera"]["position"]["y"] = world.camera.position.y;
-    j["camera"]["position"]["z"] = world.camera.position.z;
-    j["camera"]["target"]["x"] = world.camera.target.x;
-    j["camera"]["target"]["y"] = world.camera.target.y;
-    j["camera"]["target"]["z"] = world.camera.target.z;
-    j["camera"]["up"]["x"] = world.camera.up.x;
-    j["camera"]["up"]["y"] = world.camera.up.y;
-    j["camera"]["up"]["z"] = world.camera.up.z;
-    j["camera"]["is_perspective"] = world.camera.is_perspective;
     j["objects"] = json::array();
     for (Object &cube: world.objects) {
         json obj;
@@ -140,7 +131,7 @@ json ReadJsonFromFile(std::string file_name) {
     return {};
 }
 static Object deserializeObj(json &jObj){
-    Object obj = Object::new_cube();
+    Object obj{};
     obj.name = jObj["name"] ;
     obj.position.x = jObj["position"]["x"];
     obj.position.y = jObj["position"]["y"];
@@ -153,39 +144,26 @@ static Object deserializeObj(json &jObj){
     obj.rotation.z = jObj["rotation"]["z"];
     obj.rotation.w = jObj["rotation"]["w"];
     for(json& vrt : jObj["vertices"]) {
-        ray::Vector3  vertice;
-        vertice.x = vrt["x"];
-        vertice.y = vrt["y"];
-        vertice.z = vrt["z"];
-        obj.vertices.push_back(vertice);
+        obj.vertices.push_back({vrt["x"], vrt["y"], vrt["z"]});
     }
     for (json& child:jObj["children"]){
         obj.children.push_back(deserializeObj(child));
     }
     return obj;
 }
-static bool deserialize(){
+bool deserialize(){
     json jInput = ReadJsonFromFile("file.out");
     if (jInput.empty()) {
         return false;
     }
-    world.camera.position.x = jInput["camera"]["position"]["x"] ;
-    world.camera.position.y = jInput["camera"]["position"]["y"] ;
-    world.camera.position.z = jInput["camera"]["position"]["z"] ;
-    world.camera.target.x = jInput["camera"]["target"]["x"] ;
-    world.camera.target.y = jInput["camera"]["target"]["y"] ;
-    world.camera.target.z = jInput["camera"]["target"]["z"] ;
-    world.camera.up.x = jInput["camera"]["up"]["x"] ;
-    world.camera.up.y = jInput["camera"]["up"]["y"] ;
-    world.camera.up.z = jInput["camera"]["up"]["z"] ;
-    world.camera.is_perspective = jInput["camera"]["is_perspective"];
+
     for(json& o : jInput["objects"]) {
         world.objects.push_back(deserializeObj(o)) ;
     }
 
     return true;
 }
-static void HandleMenu(int *state, int *mainActive, int *mainFocused, int *subActive, int *scrollIndex, ray::Rectangle* menuRec){
+void HandleMenu(int *state, int *mainActive, int *mainFocused, int *subActive, int *scrollIndex, ray::Rectangle* menuRec){
 
     const char* menuItems[] = { "New", "Open", "Save", "Save As", "Exit" };
     const char* submenuNew[] = {"Project", "Database", "Workspace"};
@@ -277,9 +255,10 @@ int main()
     ray::InitWindow(screenWidth, screenHeight, "Editor 3D");
     ray::SetTargetFPS(60);
 
-   if (not deserialize()) {
-       world.objects.push_back(Object::new_cube());
-   };
+    if (not deserialize()) {
+        world.objects.push_back(Object::new_cube());
+    }
+
     // Main game loop
     while (!ray::WindowShouldClose())
     {
@@ -298,6 +277,7 @@ int main()
         ray::DrawFPS(20,20);
 
         HandleMenu(&state, &mainActive, &mainFocused, &subActive, &scrollIndex, &menuRec);
+
         ray::DrawText( mesajMenu, 10, 90, 20, ray::DARKGRAY);
         ray::EndDrawing();
     }
