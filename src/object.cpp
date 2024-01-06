@@ -82,7 +82,7 @@ Object Object::new_cube() {
 
 #pragma endregion
 
-void World::CameraSettings::input_movement() {
+void CameraSettings::input_movement() {
     const float wasd_sensitivity = 2.3;
     const float mouse_wheel_sensitivity = 13;
     const float mouse_sensitivity = 0.7;
@@ -100,7 +100,7 @@ void World::CameraSettings::input_movement() {
     distance += ray::GetMouseWheelMove() * -mouse_wheel_sensitivity * ray::GetFrameTime();
 
     // orbiting
-    if (ray::IsMouseButtonDown(0) /*&& ray::IsKeyDown(ray::KEY_LEFT_SHIFT)*/) {
+    if ((ray::IsMouseButtonDown(ray::MOUSE_BUTTON_LEFT) && ray::IsKeyDown(ray::KEY_LEFT_SHIFT)) || ray::IsMouseButtonDown(ray::MOUSE_BUTTON_MIDDLE)) {
         auto mouse_delta = ray::Vector2Scale(ray::GetMouseDelta(),-mouse_sensitivity * ray::GetFrameTime() );
         yaw += mouse_sensitivity * mouse_delta.x;
         pitch += mouse_sensitivity * mouse_delta.y;
@@ -109,7 +109,7 @@ void World::CameraSettings::input_movement() {
 }
 
 
-ray::Matrix World::CameraSettings::get_view_projection_matrix() {
+ray::Matrix CameraSettings::get_view_projection_matrix() {
     auto position = ray::Vector3RotateByQuaternion({0,0,distance}, ray::QuaternionFromEuler(pitch, yaw, 0));
     position = ray::Vector3Add(position, target);
     float aspect_ratio = screenWidth / (float) screenHeight;
@@ -125,6 +125,52 @@ ray::Matrix World::CameraSettings::get_view_projection_matrix() {
     matrix = ray::MatrixMultiply(matrix, ray::MatrixTranslate(0,0,-1));
     return matrix;
 }
+
+Ray CameraSettings::ray_from_mouse_position(int x, int y) {
+    // create Ray in clip space
+    Ray r = {
+            .origin = {(x/(float)screenWidth-0.5f)*2,(y/(float)screenHeight-0.5f)*2,0},
+            .direction = {0,0,-1},
+    };
+    debug_text(ray::TextFormat("origin:%s direction:%s", v3_to_text(r.origin), v3_to_text(r.direction)));
+
+    // we transform the Ray coordinates from clip space to world space
+    ray::Matrix inverse_VP = ray::MatrixInvert(get_view_projection_matrix());
+    r.origin = apply_transformation(r.origin, inverse_VP);
+    r.direction = apply_transformation(r.direction, inverse_VP);
+
+    debug_text(ray::TextFormat("origin:%s direction:%s", v3_to_text(r.origin), v3_to_text(r.direction)));
+    return r;
+}
+
+void World::raycast_and_add_to_selection(int x, int y) {
+    Ray r = camera.ray_from_mouse_position(x, y);
+
+    std::optional<RaycastResult> result{};
+    /*for (Object &obj : objects) {
+        auto obj_result = obj.raycast(r, selection_mode);
+        if (obj_result.has_value() && (!result.has_value() || result->distance > obj_result->distance))
+            result.emplace(*obj_result);
+    }*/
+    if (!result.has_value()) return;
+
+    selection[result->obj].insert(result->index);
+}
+
+void World::raycast_and_remove_from_selection(int x, int y) {
+    Ray r = camera.ray_from_mouse_position(x, y);
+
+    std::optional<RaycastResult> result{};
+    /*for (Object &obj : objects) {
+        auto obj_result = obj.raycast(r, selection_mode);
+        if (obj_result.has_value() && (!result.has_value() || result->distance > obj_result->distance))
+            result.emplace(*obj_result);
+    }*/
+    if (!result.has_value()) return;
+
+    selection[result->obj].erase(result->index);
+}
+
 
 void World::render() {
     Renderer renderer{};

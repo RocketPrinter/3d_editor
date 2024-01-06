@@ -17,6 +17,8 @@ int main()
         ClearBackground(ray::RAYWHITE);
 
         if (ray::IsKeyPressed(ray::KEY_SLASH)) world.debug_render = !world.debug_render;
+        if (ray::IsMouseButtonDown(ray::MOUSE_BUTTON_LEFT) && !ray::IsKeyDown(ray::KEY_LEFT_SHIFT)) world.raycast_and_add_to_selection(ray::GetMouseX(), ray::GetMouseY());
+        if (ray::IsMouseButtonDown(ray::MOUSE_BUTTON_RIGHT)) world.raycast_and_add_to_selection(ray::GetMouseX(), ray::GetMouseY());
         world.camera.input_movement();
 
         world.render();
