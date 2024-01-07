@@ -41,10 +41,8 @@ struct Object {
 
     static Object new_triangle();
     static Object new_cube();
-    static Object new_iso_sphere();
-    static Object new_cylinder();
-    static Object new_torus();
-    static Object new_cone();
+    static Object new_cylinder(int nr_vertices = 12);
+    static Object new_iso_sphere(); // todo:
 };
 
 struct CameraSettings {

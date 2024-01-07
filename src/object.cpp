@@ -80,6 +80,48 @@ Object Object::new_cube() {
     };
 }
 
+Object Object::new_cylinder(int nr_vertices) {
+    std::vector<ray::Vector3> vertices{};
+    vertices.resize(nr_vertices*2);
+    for (int i=0;i<nr_vertices;i++) {
+        float angle = 2. * PI * i / nr_vertices;
+        float x=cos(angle),z=sin(angle);
+
+        vertices[i] = {x,1.,z};
+        vertices[i+nr_vertices] = {x,-1.,z};
+    }
+
+    std::vector<int> triangle_indexes{};
+    std::vector<ray::Color> triangle_colors{};
+
+    // top face
+    for (int i=2;i<nr_vertices;i++) {
+        triangle_indexes.insert(triangle_indexes.end(), { 0, i, i-1});
+        triangle_colors.push_back(ray::ColorBrightness(ray::RED,-1.1 + (i / (float)nr_vertices)));
+    }
+
+    // bottom face
+    for (int i=nr_vertices+2;i<nr_vertices*2;i++) {
+        triangle_indexes.insert(triangle_indexes.end(), { nr_vertices, i-1, i});
+        triangle_colors.push_back(ray::ColorBrightness(ray::BLUE,-1.1 + (i / (2.*nr_vertices))));
+    }
+
+    // sides
+    for (int i=0;i<nr_vertices - 1; i++) {
+        float brightness = -0.8 + (i / (float)nr_vertices);
+        triangle_indexes.insert(triangle_indexes.end(), { i, i+1, i+nr_vertices});
+        triangle_colors.push_back(ray::ColorBrightness(ray::LIME, brightness));
+        triangle_indexes.insert(triangle_indexes.end(), { i+1, i+nr_vertices+1, i+nr_vertices});
+        triangle_colors.push_back(ray::ColorBrightness(ray::LIME, brightness));
+    }
+    triangle_indexes.insert(triangle_indexes.end(), { nr_vertices-1,0, 2*nr_vertices-1});
+    triangle_colors.push_back(ray::LIME);
+    triangle_indexes.insert(triangle_indexes.end(), { 0,nr_vertices, 2*nr_vertices-1});
+    triangle_colors.push_back(ray::LIME);
+
+    return {.name="Cylinder", .vertices = vertices, .triangle_indexes = triangle_indexes, .triangle_colors = triangle_colors};
+}
+
 #pragma endregion
 
 void CameraSettings::input_movement() {
