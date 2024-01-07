@@ -6,68 +6,37 @@
 /// DEBUG
 int original = 0, culled = 0, nodes = 0, sliced = 0, discarded = 0, drawn = 0;
 
-float Plane::distance(ray::Vector3 point) {
-    return -(ray::Vector3DotProduct(point,normal) + offset);
-}
-
-ray::Vector3 Plane::line_intersection(ray::Vector3 a, ray::Vector3 b) {
-    ray::Vector3 slope = ray::Vector3Normalize(ray::Vector3Subtract(b,a));
-    float t = -(offset + ray::Vector3DotProduct(a, normal)) / (ray::Vector3DotProduct(slope, normal));
-    return ray::Vector3Add(a,ray::Vector3Scale(slope,t));
-}
-
-Plane Triangle::get_plane() {
-    auto cross = ray::Vector3CrossProduct(
-            ray::Vector3Subtract(v2, v0), // C - A
-            ray::Vector3Subtract(v1, v0) // B - A
-    );
-
-    auto normal = ray::Vector3Normalize(cross);
-
-    return Plane {
-        .normal = normal,
-        // Ax + By + Cz + offset = 0 <=> offset = -(Ax + By + Cz)
-        .offset = -(normal.x * v0.x + normal.y * v0.y + normal.z * v0.z)
-    };
-}
-
-Triangle Triangle::ccw() {
-    if((v1.x - v0.x) * (v2.y - v0.y) - (v2.x - v0.x) * (v1.y - v0.y) < 0)
-        return *this;
-    return Triangle{.v0=v0, .v1=v2, .v2=v1, .col = col};
-}
-
-BSPNode::BSPNode(Triangle trig, Plane plane) {
+BSPNode::BSPNode(Triangle trig, Plane plane, ray::Color col) {
     this->plane = plane;
 
     trig_vertices = {trig.v0,trig.v1,trig.v2};
-    trig_colors = {trig.col};
+    trig_colors = {col};
     nodes++;
 }
 
-void BSPNode::add_above(Triangle trig, Plane p) {
-    if (above) above->add(trig,p); else above = std::make_unique<BSPNode>(trig,p);
+void BSPNode::add_above(Triangle trig, Plane p, ray::Color col) {
+    if (above) above->add(trig, p, col); else above = std::make_unique<BSPNode>(trig,p, col);
 }
 
-void BSPNode::add_below(Triangle trig, Plane p) {
-    if (below) below->add(trig,p); else below = std::make_unique<BSPNode>(trig,p);
+void BSPNode::add_below(Triangle trig, Plane p, ray::Color col) {
+    if (below) below->add(trig, p, col); else below = std::make_unique<BSPNode>(trig, p, col);
 }
 
-void BSPNode::add(Triangle trig, Plane p) {
+void BSPNode::add(Triangle trig, Plane p, ray::Color col) {
     if (ray::Vector3Equals(this->plane.normal, p.normal)) {
         // triangles are on parallel planes
         if (this->plane.offset > p.offset)
             // triangle is in front
-            add_above(trig, p);
+            add_above(trig, p, col);
         else if (this->plane.offset < p.offset)
             // triangle is behind
-            add_below(trig, p);
+            add_below(trig, p, col);
         else {
             // triangle is on the same plane
             trig_vertices.push_back(trig.v0);
             trig_vertices.push_back(trig.v1);
             trig_vertices.push_back(trig.v2);
-            trig_colors.push_back(trig.col);
+            trig_colors.push_back(col);
         }
     } else {
         float v0_dist = plane.distance(trig.v0);
@@ -76,11 +45,11 @@ void BSPNode::add(Triangle trig, Plane p) {
 
         if (v0_dist >= 0 && v1_dist >= 0 && v2_dist >= 0)
             // triangle is v_above plane
-            return add_above(trig, p);
+            return add_above(trig, p, col);
 
         if (v0_dist <= 0 && v1_dist <= 0 && v2_dist <= 0)
             // triangle is v_below plane
-            return add_below(trig, p);
+            return add_below(trig, p, col);
 
         sliced++;
 
@@ -97,51 +66,59 @@ void BSPNode::add(Triangle trig, Plane p) {
             return;
         }
 
-        ray::Vector3 intersection_a, intersection_b;
         if (v_zero == 1) {
             // handling special case, one point is on the plane while one is above and another is below
-            intersection_a = plane.line_intersection(above_arr[0], below_arr[0]);
-            if (!ray::Vector3Finite(intersection_a)) {
-                discarded++;return;
-            }
+
+            Ray intersection_ray = Ray::from_points(above_arr[0], below_arr[0]);
+            float t = plane.ray_intersection(intersection_ray);
+            if (!std::isfinite(t)){discarded++; return;}
+            auto intersection = intersection_ray.point_at_distance(t);
             add_above(Triangle {
-                    .v0 = above_arr[0], .v1 = zero, .v2 = intersection_a, .col = trig.col,
-            }.ccw(), p);
+                    .v0 = above_arr[0], .v1 = zero, .v2 = intersection,
+            }.ccw(), p, col);
             add_below(Triangle {
-                    .v0 = below_arr[0], .v1 = zero, .v2 = intersection_a, .col = trig.col,
-            }.ccw(), p);
+                    .v0 = below_arr[0], .v1 = zero, .v2 = intersection,
+            }.ccw(), p, col);
         } else if (v_above == 1) {
             //trapezoid is v_below
-            intersection_a = plane.line_intersection(above_arr[0], below_arr[0]);
-            intersection_b = plane.line_intersection(above_arr[0], below_arr[1]);
-            if (!ray::Vector3Finite(intersection_a) || !ray::Vector3Finite(intersection_b)) {
-                discarded++;return;
-            }
+
+            Ray intersection_a_ray = Ray::from_points(above_arr[0], below_arr[0]);
+            float ta = plane.ray_intersection(intersection_a_ray);
+            Ray intersection_b_ray = Ray::from_points(above_arr[0], below_arr[1]);
+            float tb = plane.ray_intersection(intersection_b_ray);
+            if (!std::isfinite(ta) || !std::isfinite(tb)){discarded++; return;}
+            auto intersection_a = intersection_a_ray.point_at_distance(ta);
+            auto intersection_b = intersection_b_ray.point_at_distance(tb);
+
             add_above(Triangle {
-                .v0 = above_arr[0], .v1 = intersection_a, .v2 = intersection_b, .col = trig.col,
-            }.ccw(), p);
+                .v0 = above_arr[0], .v1 = intersection_a, .v2 = intersection_b,
+            }.ccw(), p, col);
             add_below(Triangle {
-                    .v0 = below_arr[0], .v1 = intersection_a, .v2 = intersection_b, .col = trig.col,
-            }.ccw(), p);
+                    .v0 = below_arr[0], .v1 = intersection_a, .v2 = intersection_b,
+            }.ccw(), p, col);
             add_below(Triangle {
-                    .v0 = below_arr[0], .v1 = below_arr[1], .v2 = intersection_b, .col = trig.col,
-            }.ccw(), p);
+                    .v0 = below_arr[0], .v1 = below_arr[1], .v2 = intersection_b,
+            }.ccw(), p, col);
         } else {
             //trapezoid is v_above
-            intersection_a = plane.line_intersection(above_arr[0], below_arr[0]);
-            intersection_b = plane.line_intersection(above_arr[1], below_arr[0]);
-            if (!ray::Vector3Finite(intersection_a) || !ray::Vector3Finite(intersection_b)) {
-                discarded++;return;
-            }
+
+            Ray intersection_a_ray = Ray::from_points(above_arr[0], below_arr[0]);
+            float ta = plane.ray_intersection(intersection_a_ray);
+            Ray intersection_b_ray = Ray::from_points(above_arr[1], below_arr[0]);
+            float tb = plane.ray_intersection(intersection_b_ray);
+            if (!std::isfinite(ta) || !std::isfinite(tb)){discarded++; return;}
+            auto intersection_a = intersection_a_ray.point_at_distance(ta);
+            auto intersection_b = intersection_b_ray.point_at_distance(tb);
+
             add_below(Triangle {
-                    .v0 = below_arr[0], .v1 = intersection_a, .v2 = intersection_b, .col = trig.col,
-            }.ccw(), p);
+                    .v0 = below_arr[0], .v1 = intersection_a, .v2 = intersection_b,
+            }.ccw(), p, col);
             add_above(Triangle {
-                    .v0 = above_arr[0], .v1 = intersection_a, .v2 = intersection_b, .col = trig.col,
-            }.ccw(), p);
+                    .v0 = above_arr[0], .v1 = intersection_a, .v2 = intersection_b,
+            }.ccw(), p, col);
             add_above(Triangle {
-                    .v0 = above_arr[0], .v1 = above_arr[1], .v2 = intersection_b, .col = trig.col,
-            }.ccw(), p);
+                    .v0 = above_arr[0], .v1 = above_arr[1], .v2 = intersection_b,
+            }.ccw(), p, col);
         }
         //debug_text(ray::TextFormat("%s %f %s %f",v3_to_text(intersection_a), plane.distance(intersection_a), v3_to_text(intersection_b), plane.distance(intersection_b)));
     }
@@ -182,7 +159,7 @@ void BSPNode::draw_debug(int previous) {
     if (above) above->draw_debug(1);
 }
 
-bool Renderer::cull_or_add_to_bsp_tree(Triangle trig) {
+bool Renderer::cull_or_add_to_bsp_tree(Triangle trig, ray::Color col) {
     original++;
     auto aabb_min = ray::Vector3Min(trig.v0, ray::Vector3Min(trig.v1,trig.v2));
     auto aabb_max = ray::Vector3Max(trig.v0, ray::Vector3Max(trig.v1,trig.v2));
@@ -200,9 +177,9 @@ bool Renderer::cull_or_add_to_bsp_tree(Triangle trig) {
     }
 
     if (root) {
-        root->add(trig, plane);
+        root->add(trig, plane, col);
     } else {
-        root = std::make_unique<BSPNode>(trig, plane);
+        root = std::make_unique<BSPNode>(trig, plane, col);
     }
     return true;
 }

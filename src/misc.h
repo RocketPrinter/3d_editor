@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <cmath>
 namespace ray {
     #include "raylib.h"
@@ -21,6 +22,7 @@ namespace ray {
 const int screenWidth = 800;
 const int screenHeight = 450;
 
+/// DEBUG STUFF
 const char* v2_to_text(ray::Vector2 v);
 const char* v3_to_text(ray::Vector3 v);
 const char* v4_to_text(ray::Vector4 v);
@@ -29,3 +31,30 @@ const char* trig_to_text(ray::Vector3 v0, ray::Vector3 v1, ray::Vector3 v2);
 
 void debug_text(const char *text, ray::Color color = ray::GRAY);
 void reset_draw_debug();
+
+/// GEOMETRY CONSTRUCTS
+struct Ray {
+    ray::Vector3 origin{}, direction{};
+
+    static Ray from_points(ray::Vector3 a, ray::Vector3 b);
+    ray::Vector3 point_at_distance(float t);
+};
+
+struct Plane {
+    ray::Vector3 normal; float offset;
+
+    // if > 0 then point is above the plane, == 0 is on the plane and < 0 is under
+    float distance(ray::Vector3 point);
+    float ray_intersection(Ray r);
+};
+
+struct Triangle {
+    ray::Vector3 v0,v1,v2;
+
+    Plane get_plane();
+    bool is_point_on_triangle(ray::Vector3 p);
+    // returns a triangle that must be CCW
+    Triangle ccw();
+};
+
+ray::Vector3 apply_transformation(ray::Vector3 v, ray::Matrix matrix);

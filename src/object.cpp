@@ -7,38 +7,100 @@ ray::Matrix Object::get_model_matrix() {
     return model;
 }
 
-ray::Vector3 apply_transformation(ray::Vector3 v, ray::Matrix mvp_matrix) {
-    // homogeneous coordinates
-    ray::Vector4 v4 = ray::Vector4Transform(ray::Vector4FromVector3(v, 1.), mvp_matrix);
-    // perspective divide/normalization
-    return {v4.x/v4.w, v4.y/v4.w, v4.z/v4.w};
+std::optional<RaycastResult> Object::raycast(Ray r, SelectionMode mode, ray::Matrix &parent_transform) {
+    // multiplying parent transform by the model transform of this object
+    ray::Matrix world_space_matrix = ray::MatrixMultiply(get_model_matrix(), parent_transform);
+
+    // transforming vertices
+    std::vector<ray::Vector3> transformed_vertices{};
+    for (auto &v: vertices) {
+        transformed_vertices.push_back(apply_transformation(v, world_space_matrix));
+    }
+
+    std::optional<RaycastResult> result{};
+
+    if (mode == SelectionMode::Vertex) {
+        // testing a sphere around vertices
+        // todo:
+    } else {
+        // testing triangles
+        int len = triangle_colors.size();
+        for (int i=0; i < len; i++) {
+            Triangle trig = {
+                    .v0 = transformed_vertices[triangle_indexes[i*3+0]],
+                    .v1 = transformed_vertices[triangle_indexes[i*3+1]],
+                    .v2 = transformed_vertices[triangle_indexes[i*3+2]],
+            };
+            Plane p = trig.get_plane();
+            float t = p.ray_intersection(r);
+            auto hit_pos = r.point_at_distance(t);
+            if (!std::isfinite(t) || t < 0 || !trig.is_point_on_triangle(hit_pos)) continue;
+            RaycastResult new_result = {.distance = t,.obj = this,.hit_pos = hit_pos,.index = i,};
+            if (result.has_value() && (new_result.distance < result->distance))
+                result.emplace(new_result);
+        }
+    }
+
+    // raycasting children
+    for(Object &child : children) {
+        auto child_result = child.raycast(r, mode, world_space_matrix);
+        if (child_result.has_value() && (!result.has_value() || result->distance > child_result->distance))
+            result.emplace(*child_result);
+    }
+
+    return result;
 }
 
-void Object::add_to_render(Renderer &renderer, ray::Matrix &parent_transform) {
+
+void Object::add_to_render(Renderer &renderer, ray::Matrix &parent_transform, SelectionMode selection_mode, Selection &selection, float selection_color_factor) {
     // multiplying parent transform by the model transform of this object
     ray::Matrix mvp_matrix = ray::MatrixMultiply(get_model_matrix(), parent_transform);
 
-    // transforming vertices (todo: this allocation can be optimised)
+    // transforming vertices
     std::vector<ray::Vector3> transformed_vertices{};
     for (auto &v: vertices) {
         transformed_vertices.push_back(apply_transformation(v, mvp_matrix));
     }
 
-    // adding triangles
-    int len = triangle_colors.size();
-    for (int i=0; i<len;i++) {
-        renderer.cull_or_add_to_bsp_tree(
-                Triangle {
-                    .v0 = transformed_vertices[triangle_indexes[i*3  ]],
-                    .v1 = transformed_vertices[triangle_indexes[i*3+1]],
-                    .v2 = transformed_vertices[triangle_indexes[i*3+2]],
-                    .col = triangle_colors[i],
-                });
+    auto kvp = selection.find(this);
+    if (kvp == selection.end()) {
+        // object is not part of selection, render normally
+
+        // rendering triangles
+        int len = triangle_colors.size();
+        for (int i=0; i<len;i++) {
+            renderer.cull_or_add_to_bsp_tree(
+                    Triangle {
+                            .v0 = transformed_vertices[triangle_indexes[i*3  ]],
+                            .v1 = transformed_vertices[triangle_indexes[i*3+1]],
+                            .v2 = transformed_vertices[triangle_indexes[i*3+2]],
+                    }, triangle_colors[i]);
+        }
+    } else {
+        if (selection_mode == SelectionMode::Vertex) {
+            // todo: render selected vertices
+        }
+
+        // rendering triangles
+        int len = triangle_colors.size();
+        for (int i=0; i<len;i++) {
+            ray::Color col = triangle_colors[i];
+            if (selection_mode == SelectionMode::Object || kvp->second.contains(i))
+                // todo: mix color
+                col = ray::ColorBrightness(SELECTION_COLOR, selection_color_factor);
+
+            renderer.cull_or_add_to_bsp_tree(
+                    Triangle {
+                            .v0 = transformed_vertices[triangle_indexes[i*3  ]],
+                            .v1 = transformed_vertices[triangle_indexes[i*3+1]],
+                            .v2 = transformed_vertices[triangle_indexes[i*3+2]],
+                    }, col);
+        }
     }
 
     // rendering children
     for(Object &child : children) {
-        child.add_to_render(renderer, mvp_matrix);
+        child.add_to_render(renderer, mvp_matrix, selection_mode, selection, selection_color_factor);
     }
 }
 
@@ -47,7 +109,7 @@ void Object::add_to_render(Renderer &renderer, ray::Matrix &parent_transform) {
 Object Object::new_triangle() {
     float d = 2 * std::sqrt(2) /3.;
     return Object {
-            .name = "New triangle",
+            .name = "Triangle",
             .vertices = {
                     {0,0,2./3.},{0,-d,-1./3.},{0,d,-1./3.},
             },
@@ -63,7 +125,7 @@ Object Object::new_cube() {
     }
 
     return Object{
-        .name =  "New cube",
+        .name =  "Cube",
         .vertices = {
                 {-1,-1, 1},{1,-1, 1},{-1, 1, 1},{ 1, 1, 1},
                 {-1,-1,-1},{1,-1,-1},{-1, 1,-1},{ 1, 1,-1},
@@ -150,7 +212,6 @@ void CameraSettings::input_movement() {
     }
 }
 
-
 ray::Matrix CameraSettings::get_view_projection_matrix() {
     auto position = ray::Vector3RotateByQuaternion({0,0,distance}, ray::QuaternionFromEuler(pitch, yaw, 0));
     position = ray::Vector3Add(position, target);
@@ -159,7 +220,7 @@ ray::Matrix CameraSettings::get_view_projection_matrix() {
             // view matrix
             ray::MatrixLookAt(position, target, {0, 1, 0}),
             // perspective projection matrix
-            ray::MatrixPerspective(fov, aspect_ratio, 1, 200)
+            ray::MatrixPerspective(fov, aspect_ratio, 0.001, 200)
             );
 
     // projection matrix flips the handedness for some reason so we unflip it and substract one on the z axis so it's in the range (-inf, 0]
@@ -169,31 +230,28 @@ ray::Matrix CameraSettings::get_view_projection_matrix() {
 }
 
 Ray CameraSettings::ray_from_mouse_position(int x, int y) {
-    // create Ray in clip space
+    ray::Vector3 clip_space_point = {(x/(float)screenWidth-0.5f)*2,(y/(float)screenHeight-0.5f)*2,-1};
+    ray::Matrix inverse_vp = ray::MatrixInvert(get_view_projection_matrix());
+    auto world_space_point = apply_transformation(clip_space_point, inverse_vp);
+    auto origin = apply_transformation({0,0,-0.001}, inverse_vp);
     Ray r = {
-            .origin = {(x/(float)screenWidth-0.5f)*2,(y/(float)screenHeight-0.5f)*2,0},
-            .direction = {0,0,-1},
+            .origin = origin,
+            .direction = ray::Vector3Normalize(ray::Vector3Subtract(world_space_point, origin)),
     };
-    debug_text(ray::TextFormat("origin:%s direction:%s", v3_to_text(r.origin), v3_to_text(r.direction)));
-
-    // we transform the Ray coordinates from clip space to world space
-    ray::Matrix inverse_VP = ray::MatrixInvert(get_view_projection_matrix());
-    r.origin = apply_transformation(r.origin, inverse_VP);
-    r.direction = apply_transformation(r.direction, inverse_VP);
-
-    debug_text(ray::TextFormat("origin:%s direction:%s", v3_to_text(r.origin), v3_to_text(r.direction)));
+    debug_text(ray::TextFormat("origin:%s direction:%s wsp:%s", v3_to_text(r.origin), v3_to_text(r.direction),v3_to_text(world_space_point)));
     return r;
 }
 
 void World::raycast_and_add_to_selection(int x, int y) {
     Ray r = camera.ray_from_mouse_position(x, y);
+    ray::Matrix identity = ray::MatrixIdentity();
 
     std::optional<RaycastResult> result{};
-    /*for (Object &obj : objects) {
-        auto obj_result = obj.raycast(r, selection_mode);
+    for (Object &obj : objects) {
+        auto obj_result = obj.raycast(r, selection_mode, identity);
         if (obj_result.has_value() && (!result.has_value() || result->distance > obj_result->distance))
             result.emplace(*obj_result);
-    }*/
+    }
     if (!result.has_value()) return;
 
     selection[result->obj].insert(result->index);
@@ -201,13 +259,14 @@ void World::raycast_and_add_to_selection(int x, int y) {
 
 void World::raycast_and_remove_from_selection(int x, int y) {
     Ray r = camera.ray_from_mouse_position(x, y);
+    ray::Matrix identity = ray::MatrixIdentity();
 
     std::optional<RaycastResult> result{};
-    /*for (Object &obj : objects) {
-        auto obj_result = obj.raycast(r, selection_mode);
+    for (Object &obj : objects) {
+        auto obj_result = obj.raycast(r, selection_mode, identity);
         if (obj_result.has_value() && (!result.has_value() || result->distance > obj_result->distance))
             result.emplace(*obj_result);
-    }*/
+    }
     if (!result.has_value()) return;
 
     selection[result->obj].erase(result->index);
@@ -219,8 +278,10 @@ void World::render() {
 
     ray::Matrix vp_matrix = camera.get_view_projection_matrix();
 
+    float selection_color_factor = sin(SELECTION_FREQUENCY * ray::GetTime());
+
     for(Object &obj : objects) {
-        obj.add_to_render(renderer, vp_matrix);
+        obj.add_to_render(renderer, vp_matrix, selection_mode, selection, selection_color_factor);
     }
     
     renderer.draw(debug_render);
