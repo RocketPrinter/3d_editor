@@ -1,4 +1,5 @@
 #include "object.h"
+#include "menu.h"
 
 ray::Matrix Object::get_model_matrix() {
     ray::Matrix model = ray::MatrixScale(scale.x, scale.y, scale.z);
@@ -118,13 +119,13 @@ Object Object::new_triangle() {
     };
 }
 
-Object Object::new_cube(int index) {
+Object* Object::new_cube(int index) {
     std::vector<ray::Color> colors = {ray::RED, ray::MAROON, ray::LIME, ray::GREEN, ray::BLUE, ray::DARKBLUE};
     for (int i=6;i<12;i++){
         colors.push_back(ray::ColorBrightness(colors[i-6],-0.7));
     }
 
-    return Object{
+    return new Object{
         .name =  "Cube "+  std::to_string(index),
         .vertices = {
                 {-1,-1, 1},{1,-1, 1},{-1, 1, 1},{ 1, 1, 1},
@@ -247,8 +248,8 @@ void World::raycast_and_add_to_selection(int x, int y) {
     ray::Matrix identity = ray::MatrixIdentity();
 
     std::optional<RaycastResult> result{};
-    for (Object &obj : objects) {
-        auto obj_result = obj.raycast(r, selection_mode, identity);
+    for (Object* obj : objects) {
+        auto obj_result = obj->raycast(r, selection_mode, identity);
         if (obj_result.has_value() && (!result.has_value() || result->distance > obj_result->distance))
             result.emplace(*obj_result);
     }
@@ -262,8 +263,8 @@ void World::raycast_and_remove_from_selection(int x, int y) {
     ray::Matrix identity = ray::MatrixIdentity();
 
     std::optional<RaycastResult> result{};
-    for (Object &obj : objects) {
-        auto obj_result = obj.raycast(r, selection_mode, identity);
+    for (Object* obj : objects) {
+        auto obj_result = obj->raycast(r, selection_mode, identity);
         if (obj_result.has_value() && (!result.has_value() || result->distance > obj_result->distance))
             result.emplace(*obj_result);
     }
@@ -272,6 +273,10 @@ void World::raycast_and_remove_from_selection(int x, int y) {
     selection[result->obj].erase(result->index);
 }
 
+void World::addNewObject(Object* object){
+    this->objects.push_back(object);
+    this->menu->addToMenu(object);
+}
 
 void World::render() {
     Renderer renderer{};
@@ -280,9 +285,9 @@ void World::render() {
 
     float selection_color_factor = sin(SELECTION_FREQUENCY * ray::GetTime());
 
-    for(Object &obj : objects) {
-        if(obj.is_visible) {
-            obj.add_to_render(renderer, vp_matrix, selection_mode, selection, selection_color_factor);
+    for(Object* obj : objects) {
+        if(obj->is_visible) {
+            obj->add_to_render(renderer, vp_matrix, selection_mode, selection, selection_color_factor);
         }
     }
     

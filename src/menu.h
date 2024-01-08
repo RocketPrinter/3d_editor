@@ -14,7 +14,7 @@ struct MenuItem {
 struct Menu {
     std::list<MenuItem*> menuList{};
     int numElements = 0;
-    void addToMenu(Object &obj);
+    void addToMenu(Object* obj);
     void showMenu();
     bool isMouseOverMenuItem(MenuItem &menuItem);
     bool isMouseLeftClickMenuItem(MenuItem &menuItem);

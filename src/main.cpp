@@ -58,27 +58,27 @@ void executeSaveAsDatabase();
 void executeSaveAsCPP();
 void executeSaveAsJSon();
 
-char* mesajMenu = "";
+std::string mesajMenu = "";
 #include "misc.h"
 
 void test_config(World &world);
 static World world{};
 
-static json serializeObj(Object &cube){
+static json serializeObj(Object* cube){
     json obj;
-    obj["name"] = cube.name;
-    obj["position"]["x"] = cube.position.x;
-    obj["position"]["y"] = cube.position.y;
-    obj["position"]["z"] = cube.position.z;
-    obj["scale"]["x"] = cube.scale.x;
-    obj["scale"]["y"] = cube.scale.y;
-    obj["scale"]["z"] = cube.scale.z;
-    obj["rotation"]["x"] = cube.rotation.x;
-    obj["rotation"]["y"] = cube.rotation.y;
-    obj["rotation"]["z"] = cube.rotation.z;
-    obj["rotation"]["w"] = cube.rotation.w;
+    obj["name"] = cube->name;
+    obj["position"]["x"] = cube->position.x;
+    obj["position"]["y"] = cube->position.y;
+    obj["position"]["z"] = cube->position.z;
+    obj["scale"]["x"] = cube->scale.x;
+    obj["scale"]["y"] = cube->scale.y;
+    obj["scale"]["z"] = cube->scale.z;
+    obj["rotation"]["x"] = cube->rotation.x;
+    obj["rotation"]["y"] = cube->rotation.y;
+    obj["rotation"]["z"] = cube->rotation.z;
+    obj["rotation"]["w"] = cube->rotation.w;
     obj["vertices"] = json::array();
-    for (ray::Vector3 &vert: cube.vertices) {
+    for (ray::Vector3 &vert: cube->vertices) {
         json vertices;
         vertices["x"] = vert.x;
         vertices["y"] = vert.y;
@@ -86,11 +86,11 @@ static json serializeObj(Object &cube){
         obj["vertices"].push_back(vertices);
     }
     obj["triangle_indexes"] = json::array();
-    for (int i: cube.triangle_indexes) {
+    for (int i: cube->triangle_indexes) {
         obj["triangle_indexes"]. push_back(i);
     }
     obj["triangle_colors"] = json::array();
-    for (ray::Color &clr: cube.triangle_colors) {
+    for (ray::Color &clr: cube->triangle_colors) {
         json colors;
         colors["r"] = clr.r;
         colors["g"] = clr.g;
@@ -99,8 +99,8 @@ static json serializeObj(Object &cube){
         obj["triangle_colors"].push_back(colors);
     }
     obj["children"]=json::array();
-    for (Object &cub :cube.children) {
-        json temp = serializeObj(cub);
+    for (Object cub :cube->children) {
+        json temp = serializeObj(&cub);
         obj["children"].push_back(temp);
     }
     return obj;
@@ -108,9 +108,9 @@ static json serializeObj(Object &cube){
 static json serialize(World &world){
     json j;
     j["objects"] = json::array();
-    for (Object &cube: world.objects) {
+    for (Object* cube: world.objects) {
         json obj;
-        obj= serializeObj(cube);
+        obj = serializeObj(cube);
         j["objects"].push_back(obj);
     }
     return j;
@@ -130,24 +130,24 @@ json ReadJsonFromFile(std::string file_name) {
     }
     return {};
 }
-static Object deserializeObj(json &jObj){
-    Object obj{};
-    obj.name = jObj["name"] ;
-    obj.position.x = jObj["position"]["x"];
-    obj.position.y = jObj["position"]["y"];
-    obj.position.z = jObj["position"]["z"];
-    obj.scale.x = jObj["scale"]["x"];
-    obj.scale.y = jObj["scale"]["y"];
-    obj.scale.z = jObj["scale"]["z"];
-    obj.rotation.x = jObj["rotation"]["x"];
-    obj.rotation.y = jObj["rotation"]["y"];
-    obj.rotation.z = jObj["rotation"]["z"];
-    obj.rotation.w = jObj["rotation"]["w"];
+static Object* deserializeObj(json &jObj){
+    Object* obj = new Object();
+    obj->name = jObj["name"] ;
+    obj->position.x = jObj["position"]["x"];
+    obj->position.y = jObj["position"]["y"];
+    obj->position.z = jObj["position"]["z"];
+    obj->scale.x = jObj["scale"]["x"];
+    obj->scale.y = jObj["scale"]["y"];
+    obj->scale.z = jObj["scale"]["z"];
+    obj->rotation.x = jObj["rotation"]["x"];
+    obj->rotation.y = jObj["rotation"]["y"];
+    obj->rotation.z = jObj["rotation"]["z"];
+    obj->rotation.w = jObj["rotation"]["w"];
     for(json& vrt : jObj["vertices"]) {
-        obj.vertices.push_back({vrt["x"], vrt["y"], vrt["z"]});
+        obj->vertices.push_back({vrt["x"], vrt["y"], vrt["z"]});
     }
     for (int ti : jObj["triangle_indexes"]) {
-        obj.triangle_indexes.push_back(ti);
+        obj->triangle_indexes.push_back(ti);
     }
     for (json& clrs : jObj["triangle_colors"]) {
         ray::Color color{};
@@ -155,11 +155,11 @@ static Object deserializeObj(json &jObj){
         color.r = clrs["r"];
         color.b = clrs["b"];
         color.g = clrs["g"];
-        obj.triangle_colors.push_back(color);
+        obj->triangle_colors.push_back(color);
     }
-    for (json& child:jObj["children"]){
-        obj.children.push_back(deserializeObj(child));
-    }
+//    for (json& child:jObj["children"]){
+//        obj->children.push_back(&(deserializeObj(child)));
+//    }
     return obj;
 }
 bool deserialize(){
@@ -254,7 +254,7 @@ void HandleMenu(int *state, int *mainActive, int *mainFocused, int *subActive, i
 }
 void fillMenu(Menu &menu){
 //    menu.clearMenu();
-    for(Object &obj : world.objects){
+    for(Object* obj : world.objects){
         menu.addToMenu(obj);
     }
 }
@@ -271,10 +271,11 @@ int main()
     ray::InitWindow(screenWidth, screenHeight, "Editor 3D");
     ray::SetTargetFPS(60);
     Menu menu{};
+    world.menu = &menu;
     if (not deserialize()) {
         world.objects.push_back(Object::new_cube());
     }
-    fillMenu(menu);
+    fillMenu(*world.menu);
     // Main game loop
     while (!ray::WindowShouldClose())
     {
@@ -305,7 +306,7 @@ int main()
 int editing=0, cube_index=0;
 void test_config(World &world) {
     auto &cam = world.camera;
-    Object &cube = world.objects[cube_index];
+    Object* cube = world.objects[cube_index];
 
     if (ray::IsKeyPressed(ray::KEY_SPACE)) {
         editing = (editing + 1) % 3;
@@ -322,7 +323,8 @@ void test_config(World &world) {
     for (int i=0; i <= world.objects.size() && i < 10; i++) {
         if (ray::IsKeyPressed(ray::KEY_ZERO + i)) {
             if (i == world.objects.size()) {
-                world.objects.push_back(Object::new_cube(i));
+                Object* newCube = Object::new_cube(i);
+                world.addNewObject(newCube);
             }
             cube_index = i;
         }
@@ -330,21 +332,21 @@ void test_config(World &world) {
 
     switch (editing) {
         case 0:
-            cube.position = ray::Vector3Add(cube.position, input);
+            cube->position = ray::Vector3Add(cube->position, input);
             break;
         case 1:
-            cube.rotation = ray::QuaternionMultiply(ray::QuaternionFromEuler(input.x,input.y,input.z), cube.rotation);
+            cube->rotation = ray::QuaternionMultiply(ray::QuaternionFromEuler(input.x,input.y,input.z), cube->rotation);
             break;
         case 2:
-            cube.scale = ray::Vector3Add(cube.scale, input);
+            cube->scale = ray::Vector3Add(cube->scale, input);
             break;
     }
 
-    debug_text(ray::TextFormat("cube #%d position: %s", cube_index, v3_to_text(cube.position)),
+    debug_text(ray::TextFormat("cube #%d position: %s", cube_index, v3_to_text(cube->position)),
                editing == 0 ? ray::GREEN : ray::GRAY);
-    debug_text(ray::TextFormat("cube #%d rotation: %s", cube_index, v3_to_text(ray::QuaternionToEuler(cube.rotation))),
+    debug_text(ray::TextFormat("cube #%d rotation: %s", cube_index, v3_to_text(ray::QuaternionToEuler(cube->rotation))),
                editing == 1 ? ray::GREEN : ray::GRAY);
-    debug_text(ray::TextFormat("cube #%d scale: %s", cube_index, v3_to_text(cube.scale)),
+    debug_text(ray::TextFormat("cube #%d scale: %s", cube_index, v3_to_text(cube->scale)),
                editing == 2 ? ray::GREEN : ray::GRAY);
 }
 
