@@ -33,9 +33,9 @@ struct Object {
     std::optional<RaycastResult> raycast(Ray r, SelectionMode mode, ray::Matrix &parent_transform);
     void add_to_render(Renderer &renderer, ray::Matrix &parent_transform, SelectionMode selection_mode, Selection &selection, float selection_color_factor);
 
-    static Object new_triangle();
+    static Object* new_triangle(int index = 0);
     static Object* new_cube(int index = 0);
-    static Object new_cylinder(int nr_vertices = 12);
+    static Object* new_cylinder(int index = 0, int nr_vertices = 12);
     static Object new_iso_sphere(); // todo:
 };
 

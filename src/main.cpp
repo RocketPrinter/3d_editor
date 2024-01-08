@@ -271,6 +271,7 @@ int main()
     ray::InitWindow(screenWidth, screenHeight, "Editor 3D");
     ray::SetTargetFPS(60);
     Menu menu{};
+    menu.world = &world;
     world.menu = &menu;
     if (not deserialize()) {
         world.objects.push_back(Object::new_cube());

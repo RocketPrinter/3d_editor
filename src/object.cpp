@@ -107,10 +107,10 @@ void Object::add_to_render(Renderer &renderer, ray::Matrix &parent_transform, Se
 
 #pragma region new_objects
 
-Object Object::new_triangle() {
+Object* Object::new_triangle(int index) {
     float d = 2 * std::sqrt(2) /3.;
-    return Object {
-            .name = "Triangle",
+    return new Object {
+            .name = "Triangle "+  std::to_string(index),
             .vertices = {
                     {0,0,2./3.},{0,-d,-1./3.},{0,d,-1./3.},
             },
@@ -143,7 +143,7 @@ Object* Object::new_cube(int index) {
     };
 }
 
-Object Object::new_cylinder(int nr_vertices) {
+Object* Object::new_cylinder(int index, int nr_vertices) {
     std::vector<ray::Vector3> vertices{};
     vertices.resize(nr_vertices*2);
     for (int i=0;i<nr_vertices;i++) {
@@ -182,7 +182,7 @@ Object Object::new_cylinder(int nr_vertices) {
     triangle_indexes.insert(triangle_indexes.end(), { 0,nr_vertices, 2*nr_vertices-1});
     triangle_colors.push_back(ray::LIME);
 
-    return {.name="Cylinder", .vertices = vertices, .triangle_indexes = triangle_indexes, .triangle_colors = triangle_colors};
+    return new Object{.name="Cylinder "+  std::to_string(index), .vertices = vertices, .triangle_indexes = triangle_indexes, .triangle_colors = triangle_colors};
 }
 
 #pragma endregion
