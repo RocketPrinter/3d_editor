@@ -40,6 +40,9 @@ add_executable(3d_editor src/main.cpp
         src/object.cpp
         src/misc.cpp
         src/serialization.cpp
-        src/serialization.h)
+        src/serialization.h
+        src/menu.cpp
+        src/menu.h
+)
 #set(raylib_VERBOSE 1)
 target_link_libraries(3d_editor raylib nlohmann_json::nlohmann_json)

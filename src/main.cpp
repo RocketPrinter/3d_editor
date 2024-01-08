@@ -7,7 +7,7 @@
 #define RAYGUI_IMPLEMENTATION
 #include "lib/raygui.h"
 #include "serialization.h"
-
+#include "menu.h"
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
@@ -146,6 +146,17 @@ static Object deserializeObj(json &jObj){
     for(json& vrt : jObj["vertices"]) {
         obj.vertices.push_back({vrt["x"], vrt["y"], vrt["z"]});
     }
+    for (int ti : jObj["triangle_indexes"]) {
+        obj.triangle_indexes.push_back(ti);
+    }
+    for (json& clrs : jObj["triangle_colors"]) {
+        ray::Color color{};
+        color.a = clrs["a"];
+        color.r = clrs["r"];
+        color.b = clrs["b"];
+        color.g = clrs["g"];
+        obj.triangle_colors.push_back(color);
+    }
     for (json& child:jObj["children"]){
         obj.children.push_back(deserializeObj(child));
     }
@@ -241,7 +252,12 @@ void HandleMenu(int *state, int *mainActive, int *mainFocused, int *subActive, i
     }
 
 }
-
+void fillMenu(Menu &menu){
+//    menu.clearMenu();
+    for(Object &obj : world.objects){
+        menu.addToMenu(obj);
+    }
+}
 int main()
 {
 
@@ -254,11 +270,11 @@ int main()
 
     ray::InitWindow(screenWidth, screenHeight, "Editor 3D");
     ray::SetTargetFPS(60);
-
+    Menu menu{};
     if (not deserialize()) {
         world.objects.push_back(Object::new_cube());
     }
-
+    fillMenu(menu);
     // Main game loop
     while (!ray::WindowShouldClose())
     {
@@ -277,8 +293,7 @@ int main()
         ray::DrawFPS(20,20);
 
         HandleMenu(&state, &mainActive, &mainFocused, &subActive, &scrollIndex, &menuRec);
-
-        ray::DrawText( mesajMenu, 10, 90, 20, ray::DARKGRAY);
+        menu.showMenu();
         ray::EndDrawing();
     }
 
@@ -307,7 +322,7 @@ void test_config(World &world) {
     for (int i=0; i <= world.objects.size() && i < 10; i++) {
         if (ray::IsKeyPressed(ray::KEY_ZERO + i)) {
             if (i == world.objects.size()) {
-                world.objects.push_back(Object::new_cube());
+                world.objects.push_back(Object::new_cube(i));
             }
             cube_index = i;
         }

@@ -5,8 +5,9 @@
 #include <map>
 #include <set>
 #include "misc.h"
+#include <limits>
 #include "rendering.h"
-
+#define MAXFLOAT  std::numeric_limits<float>::max();
 struct Object;
 struct RaycastResult;
 
@@ -17,7 +18,7 @@ const float SELECTION_FREQUENCY=1;
 
 struct Object {
     std::string name{"New object"};
-
+    bool is_visible = true;
     ray::Vector3 position{}, scale{1,1,1};
     ray::Quaternion rotation = ray::QuaternionIdentity();
 
@@ -33,7 +34,7 @@ struct Object {
     void add_to_render(Renderer &renderer, ray::Matrix &parent_transform, SelectionMode selection_mode, Selection &selection, float selection_color_factor);
 
     static Object new_triangle();
-    static Object new_cube();
+    static Object new_cube(int index = 0);
     static Object new_cylinder(int nr_vertices = 12);
     static Object new_iso_sphere(); // todo:
 };

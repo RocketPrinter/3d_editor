@@ -118,14 +118,14 @@ Object Object::new_triangle() {
     };
 }
 
-Object Object::new_cube() {
+Object Object::new_cube(int index) {
     std::vector<ray::Color> colors = {ray::RED, ray::MAROON, ray::LIME, ray::GREEN, ray::BLUE, ray::DARKBLUE};
     for (int i=6;i<12;i++){
         colors.push_back(ray::ColorBrightness(colors[i-6],-0.7));
     }
 
     return Object{
-        .name =  "Cube",
+        .name =  "Cube "+  std::to_string(index),
         .vertices = {
                 {-1,-1, 1},{1,-1, 1},{-1, 1, 1},{ 1, 1, 1},
                 {-1,-1,-1},{1,-1,-1},{-1, 1,-1},{ 1, 1,-1},
@@ -281,7 +281,9 @@ void World::render() {
     float selection_color_factor = sin(SELECTION_FREQUENCY * ray::GetTime());
 
     for(Object &obj : objects) {
-        obj.add_to_render(renderer, vp_matrix, selection_mode, selection, selection_color_factor);
+        if(obj.is_visible) {
+            obj.add_to_render(renderer, vp_matrix, selection_mode, selection, selection_color_factor);
+        }
     }
     
     renderer.draw(debug_render);
