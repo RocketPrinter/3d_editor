@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <cassert>
 #include "rendering.h"
 #include "misc.h"
 
@@ -124,17 +123,26 @@ void BSPNode::add(Triangle trig, Plane p, ray::Color col) {
     }
 }
 
+void draw_triangle_if_valid(Triangle trig, ray::Color col) {
+    ray::Vector2 v0 = clip_to_screen_space(trig.v0);
+    ray::Vector2 v1 = clip_to_screen_space(trig.v1);
+    ray::Vector2 v2 = clip_to_screen_space(trig.v2);
+    // filters out NaN, -inf, +inf
+    if (std::isfinite(v0.x) && std::isfinite(v0.y) &&
+        std::isfinite(v1.x) && std::isfinite(v1.y) &&
+        std::isfinite(v2.x) && std::isfinite(v2.y) ){
+        drawn++;
+        ray::DrawTriangle(v0,v1,v2,col);
+    }
+    else discarded++;
+}
+
 void BSPNode::draw() {
     if (below) below->draw();
 
     int len = trig_colors.size();
-    drawn += len;
     for (int i=0;i<len;i++) {
-        ray::DrawTriangle(
-                clip_to_screen_space(trig_vertices[i*3  ]),
-                clip_to_screen_space(trig_vertices[i*3+1]),
-                clip_to_screen_space(trig_vertices[i*3+2]),
-                trig_colors[i]);
+        draw_triangle_if_valid(Triangle {trig_vertices[i*3  ], trig_vertices[i*3+1], trig_vertices[i*3+2]}, trig_colors[i]);
     }
 
     if (above) above->draw();
@@ -146,14 +154,9 @@ void BSPNode::draw_debug(int previous) {
     ray::Color col = (previous > 0 ? ray::RED : (previous < 0 ? ray::BLUE : ray::LIME));
 
     int len = trig_colors.size();
-    drawn += len;
     for (int i=0;i<len;i++) {
         auto rand_col = ray::ColorBrightness(col, ray::GetRandomValue(-25, 25) / 100.);
-        ray::DrawTriangle(
-                clip_to_screen_space(trig_vertices[i*3  ]),
-                clip_to_screen_space(trig_vertices[i*3+1]),
-                clip_to_screen_space(trig_vertices[i*3+2]),
-                rand_col);
+        draw_triangle_if_valid(Triangle {trig_vertices[i*3  ], trig_vertices[i*3+1], trig_vertices[i*3+2]}, rand_col);
     }
 
     if (above) above->draw_debug(1);
@@ -165,7 +168,7 @@ bool Renderer::cull_or_add_to_bsp_tree(Triangle trig, ray::Color col) {
     auto aabb_max = ray::Vector3Max(trig.v0, ray::Vector3Max(trig.v1,trig.v2));
 
     // clip space culling
-    if (aabb_min.z > 0 || aabb_max.x < -1 || aabb_min.x > 1 || aabb_max.y < -1 || aabb_min.y > 1) {
+    if (aabb_max.z > 0 || aabb_max.x < -1 || aabb_min.x > 1 || aabb_max.y < -1 || aabb_min.y > 1) {
         culled++; return false;
     }
 
@@ -188,6 +191,7 @@ void Renderer::draw(bool debug) {
     if (!root) return;
 
     if (debug) {
+        ray::DrawFPS(550,20);
         debug_text(ray::TextFormat("renderer: original=%d culled=%d nodes=%d", original, culled, nodes));
         debug_text(ray::TextFormat("sliced=%d discarded=%d drawn=%d", sliced, discarded, drawn));
         original = 0, culled = 0, nodes = 0, sliced = 0, discarded = 0, drawn = 0;
@@ -195,11 +199,4 @@ void Renderer::draw(bool debug) {
         root->draw_debug(0);
     } else
         root->draw();
-}
-
-ray::Vector2 clip_to_screen_space(ray::Vector3 v3) {
-    return ray::Vector2 {
-            (v3.x + 1) * screenWidth / (float) 2,
-            (v3.y + 1) * screenHeight / (float) 2,
-    };
 }

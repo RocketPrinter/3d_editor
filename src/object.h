@@ -17,7 +17,6 @@ const float SELECTION_FREQUENCY=1;
 
 struct Object {
     std::string name{"New object"};
-
     ray::Vector3 position{}, scale{1,1,1};
     ray::Quaternion rotation = ray::QuaternionIdentity();
 
@@ -33,9 +32,11 @@ struct Object {
     void add_to_render(Renderer &renderer, ray::Matrix &parent_transform, SelectionMode selection_mode, Selection &selection, float selection_color_factor);
 
     static Object new_triangle();
+    static Object new_plane(int divisions_x=4, int divisions_z=4);
     static Object new_cube();
-    static Object new_cylinder(int nr_vertices = 12);
-    static Object new_iso_sphere(); // todo:
+    static Object new_cylinder(int nr_vertices = 16);
+    static Object new_cone(int nr_vertices = 16);
+    static Object new_sphere(int meridians=16, int parallels=8);
 };
 
 struct CameraSettings {

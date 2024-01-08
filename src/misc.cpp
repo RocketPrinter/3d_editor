@@ -28,7 +28,7 @@ const char *trig_to_text(ray::Vector3 v0, ray::Vector3 v1, ray::Vector3 v2) {
 
 int __draw_debug_offset=0;
 void debug_text(const char *text, ray::Color color) {
-    const int pos_x=550, pos_y=20;
+    const int pos_x=550, pos_y=40;
     int overflow_width = ray::MeasureText(text, 10) - (screenWidth - pos_x);
     if (overflow_width < 0)
         ray::DrawText(text, pos_x, pos_y + __draw_debug_offset * 10, 10, color);
@@ -93,5 +93,12 @@ ray::Vector3 apply_transformation(ray::Vector3 v, ray::Matrix matrix) {
     ray::Vector4 v4 = ray::Vector4Transform(ray::Vector4FromVector3(v, 1.), matrix);
     // perspective divide/normalization
     return {v4.x/v4.w, v4.y/v4.w, v4.z/v4.w};
+}
+
+ray::Vector2 clip_to_screen_space(ray::Vector3 v3) {
+    return ray::Vector2 {
+            (v3.x + 1) * screenWidth / (float) 2,
+            (v3.y + 1) * screenHeight / (float) 2,
+    };
 }
 #pragma endregion

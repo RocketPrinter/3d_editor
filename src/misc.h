@@ -58,3 +58,4 @@ struct Triangle {
 };
 
 ray::Vector3 apply_transformation(ray::Vector3 v, ray::Matrix matrix);
+ray::Vector2 clip_to_screen_space(ray::Vector3 v3);

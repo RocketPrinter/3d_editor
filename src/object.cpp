@@ -118,6 +118,31 @@ Object Object::new_triangle() {
     };
 }
 
+Object Object::new_plane(int divisions_x, int divisions_z) {
+    std::vector<ray::Vector3> vertices{};
+    vertices.reserve(divisions_x * divisions_z);
+
+    for(int i=0;i<divisions_x;i++)
+    {
+        float x = (i/(divisions_x-1.))*2.-1.;
+        for (int j=0;j<divisions_z;j++)
+            vertices.push_back({x,0,(j/(divisions_z-1.0f))*2.0f-1.0f});
+    }
+
+    std::vector<int> triangle_indexes{};
+    std::vector<ray::Color> triangle_colors{};
+    for (int i=0;i<divisions_x-1;i++)
+        for (int j=0;j<divisions_z-1;j++) {
+            int p = i * divisions_z+j;
+            triangle_indexes.insert(triangle_indexes.end(),{p,p+1,p+divisions_z});
+            triangle_colors.push_back(ray::LIME);
+            triangle_indexes.insert(triangle_indexes.end(),{p+1,p+divisions_z+1,p+divisions_z});
+            triangle_colors.push_back(ray::GREEN);
+        }
+
+    return {.name="Plane", .vertices = vertices, .triangle_indexes = triangle_indexes, .triangle_colors = triangle_colors};
+}
+
 Object Object::new_cube() {
     std::vector<ray::Color> colors = {ray::RED, ray::MAROON, ray::LIME, ray::GREEN, ray::BLUE, ray::DARKBLUE};
     for (int i=6;i<12;i++){
@@ -182,6 +207,91 @@ Object Object::new_cylinder(int nr_vertices) {
     triangle_colors.push_back(ray::LIME);
 
     return {.name="Cylinder", .vertices = vertices, .triangle_indexes = triangle_indexes, .triangle_colors = triangle_colors};
+}
+
+Object Object::new_cone(int nr_vertices) {
+    std::vector<ray::Vector3> vertices{};
+    vertices.resize(nr_vertices+1);
+    for (int i=0;i<nr_vertices;i++) {
+        float angle = 2. * PI * i / nr_vertices;
+        float x=cos(angle),z=sin(angle);
+
+        vertices[i] = {x,-1./3.,z};
+    }
+    vertices[nr_vertices] = {0,2./3.,0};
+
+    std::vector<int> triangle_indexes{};
+    std::vector<ray::Color> triangle_colors{};
+
+    // conical face
+    for (int i=0;i<nr_vertices-1;i++) {
+        triangle_indexes.insert(triangle_indexes.end(), { i+1, i, nr_vertices});
+        triangle_colors.push_back(ray::ColorBrightness(ray::LIME,-0.8 + (i / (float)nr_vertices)));
+    }
+    triangle_indexes.insert(triangle_indexes.end(), {0,nr_vertices-1,nr_vertices});
+    triangle_colors.push_back(ray::ColorBrightness(ray::LIME,0.1));
+
+    // bottom face
+    for (int i=0;i<nr_vertices-1;i++) {
+        triangle_indexes.insert(triangle_indexes.end(), { 0, i, i+1});
+        triangle_colors.push_back(ray::ColorBrightness(ray::BLUE,-1.1 + (i / (float) nr_vertices)));
+    }
+
+    return {.name="Cone", .vertices = vertices, .triangle_indexes = triangle_indexes, .triangle_colors = triangle_colors};
+}
+
+Object Object::new_sphere(int meridians, int parallels) {
+    std::vector<ray::Vector3> vertices{};
+    vertices.push_back({0,1,0}); // north pole, parallel 0
+    for (int i=1;i<parallels;i++) {
+        float theta = (i/(float)parallels) * PI;
+        float sin_theta = std::sin(theta);
+        float cos_theta = std::cos(theta);
+        for(int j=0;j<meridians;j++) {
+            float phi = 2. * PI * j / meridians;
+            vertices.push_back({std::cos(phi) * sin_theta, cos_theta, std::sin(phi) * sin_theta});
+        }
+    }
+    vertices.push_back({0,-1,0}); // south pole, parallel paralells
+
+    std::vector<int> triangle_indexes{};
+
+    // top triangles
+    for(int i=1;i<meridians;i++) {
+        triangle_indexes.insert(triangle_indexes.end(), {0,i+1,i});
+    }
+    triangle_indexes.insert(triangle_indexes.end(), {0, 1, meridians});// tf?
+
+    // quads between parallels
+    for (int i=0;i<parallels-2;i++) {
+        int line_start = 1 + i * meridians;
+        for (int j=0;j<meridians-1;j++) {
+            int k = line_start + j;
+            triangle_indexes.insert(triangle_indexes.end(), {k,k+1,k+meridians});
+            triangle_indexes.insert(triangle_indexes.end(), {k+1,k+meridians+1,k+meridians});
+        }
+        triangle_indexes.insert(triangle_indexes.end(), {line_start+meridians-1, line_start, line_start+2*meridians-1});
+        triangle_indexes.insert(triangle_indexes.end(), {line_start,line_start+meridians, line_start+2*meridians-1});
+    }
+
+    // bottom triangles
+    int last = vertices.size()-1;
+    for(int i=last-meridians;i<last-1;i++) {
+        triangle_indexes.insert(triangle_indexes.end(), {last,i,i+1});
+    }
+    triangle_indexes.insert(triangle_indexes.end(), {last,last-1,last-meridians});
+
+    // colors
+    std::vector<ray::Color> triangle_colors{};
+    int len = triangle_indexes.size()/3;
+    triangle_colors.reserve(len);
+    for (int i=0;i<len;i++) {
+        auto center = ray::Vector3Add(vertices[triangle_indexes[i*3  ]],ray::Vector3Add(vertices[triangle_indexes[i*3+1]],vertices[triangle_indexes[i*3+2]]));
+        center = ray::Vector3Scale(center, (1./3.)*255);
+        triangle_colors.push_back({.r=(unsigned char)std::abs(center.x),.g=(unsigned char)std::abs(center.y),.b=(unsigned char)std::abs(center.z),.a=255});
+    }
+
+    return {.name="Sphere", .vertices = vertices, .triangle_indexes = triangle_indexes, .triangle_colors = triangle_colors};
 }
 
 #pragma endregion

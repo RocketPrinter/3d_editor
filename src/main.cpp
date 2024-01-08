@@ -22,24 +22,6 @@ enum {
 };
 
 enum {
-    SUBMENU_NEW_PROJECT=0,
-    SUBMENU_NEW_DATABASE,
-    SUBMENU_NEW_WORKSPACE,
-};
-
-enum {
-    SUBMENU_OPEN_FILE = 0,
-    SUBMENU_OPEN_PROJECT,
-};
-
-enum {
-    SUBMENU_SAVEAS_IMAGE = 0,
-    SUBMENU_SAVEAS_DATABASE,
-    SUBMENU_SAVEAS_CPP,
-    SUBMENU_SAVEAS_JSON
-};
-
-enum {
     APP_STATE_NORMAL = 0,
     APP_STATE_SHOW_MENU,
     APP_STATE_SHOW_SUBMENU,
@@ -59,7 +41,11 @@ void executeSaveAsCPP();
 void executeSaveAsJSon();
 
 char* mesajMenu = "";
-#include "misc.h"
+
+// temp
+Object default_obj() {
+    return Object::new_plane();
+}
 
 void test_config(World &world);
 static World world{};
@@ -180,8 +166,6 @@ void HandleMenu(int *state, int *mainActive, int *mainFocused, int *subActive, i
             menuRec->y = mouse.y;
         }
     }
-    // DRAW
-    GuiGrid((ray::Rectangle){0, 0, screenWidth, screenHeight},"",20.0f, 2, &mouse);
 
 
     char** submenuText = NULL;
@@ -244,7 +228,6 @@ void HandleMenu(int *state, int *mainActive, int *mainFocused, int *subActive, i
 
 int main()
 {
-
     int state = APP_STATE_NORMAL;
     int mainActive = -1;
     int mainFocused = -1;
@@ -256,7 +239,7 @@ int main()
     ray::SetTargetFPS(60);
 
     if (not deserialize()) {
-        world.objects.push_back(Object::new_cube());
+        world.objects.push_back(default_obj());
     }
 
     // Main game loop
@@ -274,7 +257,6 @@ int main()
         test_config(world);
 
         reset_draw_debug();
-        ray::DrawFPS(20,20);
 
         HandleMenu(&state, &mainActive, &mainFocused, &subActive, &scrollIndex, &menuRec);
 
@@ -307,7 +289,7 @@ void test_config(World &world) {
     for (int i=0; i <= world.objects.size() && i < 10; i++) {
         if (ray::IsKeyPressed(ray::KEY_ZERO + i)) {
             if (i == world.objects.size()) {
-                world.objects.push_back(Object::new_cube());
+                world.objects.push_back(default_obj());
             }
             cube_index = i;
         }
@@ -325,11 +307,11 @@ void test_config(World &world) {
             break;
     }
 
-    debug_text(ray::TextFormat("cube #%d position: %s", cube_index, v3_to_text(cube.position)),
+    debug_text(ray::TextFormat("#%d position: %s", cube_index, v3_to_text(cube.position)),
                editing == 0 ? ray::GREEN : ray::GRAY);
-    debug_text(ray::TextFormat("cube #%d rotation: %s", cube_index, v3_to_text(ray::QuaternionToEuler(cube.rotation))),
+    debug_text(ray::TextFormat("#%d rotation: %s", cube_index, v3_to_text(ray::QuaternionToEuler(cube.rotation))),
                editing == 1 ? ray::GREEN : ray::GRAY);
-    debug_text(ray::TextFormat("cube #%d scale: %s", cube_index, v3_to_text(cube.scale)),
+    debug_text(ray::TextFormat("#%d scale: %s", cube_index, v3_to_text(cube.scale)),
                editing == 2 ? ray::GREEN : ray::GRAY);
 }
 
@@ -368,4 +350,4 @@ void executeSaveAsJSon(){
         jsonFile<<str;
         jsonFile.close();
     }
-};
+}
