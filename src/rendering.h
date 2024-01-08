@@ -3,6 +3,8 @@
 #include <memory>
 #include "misc.h"
 
+struct RenderPoint;
+
 // a binary space partitioning tree is used to accurately z-sort the triangles
 // each node divides the world using a plane, triangles can be above the plane, below the plane, intersecting the plane or on the plane
 struct BSPNode {
@@ -31,9 +33,15 @@ struct Renderer {
     // clips triangles, checks their winding order and adds them to the BSP tree if visible on the screen
     // for this purpose clip space is defined as: [-1, 1] on x and y axis and [-inf, 0] on z axis (right handed)
     bool cull_or_add_to_bsp_tree(Triangle trig, ray::Color col);
-    // todo: something for rendering vertices
+    void add_point(const ray::Matrix &mvp_matrix, RenderPoint point);
     // draws the BSP tree using Painter's algorithm, triangles further away are drawn first
     void draw(bool debug=false);
 };
 
 ray::Vector2 clip_to_screen_space(ray::Vector3 v3);
+
+struct RenderPoint {
+    ray::Vector3 pos{};
+    float size=0.2;
+    ray::Color col=ray::RED;
+};

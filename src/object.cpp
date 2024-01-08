@@ -36,7 +36,7 @@ std::optional<RaycastResult> Object::raycast(Ray r, SelectionMode mode, ray::Mat
             auto hit_pos = r.point_at_distance(t);
             if (!std::isfinite(t) || t < 0 || !trig.is_point_on_triangle(hit_pos)) continue;
             RaycastResult new_result = {.distance = t,.obj = this,.hit_pos = hit_pos,.index = i,};
-            if (result.has_value() && (new_result.distance < result->distance))
+            if (!result.has_value() || new_result.distance < result->distance)
                 result.emplace(new_result);
         }
     }
@@ -346,13 +346,13 @@ Ray CameraSettings::ray_from_mouse_position(int x, int y) {
     auto origin = apply_transformation({0,0,-0.001}, inverse_vp);
     Ray r = {
             .origin = origin,
-            .direction = ray::Vector3Normalize(ray::Vector3Subtract(world_space_point, origin)),
+            .direction = ray::Vector3Normalize(ray::Vector3Subtract(origin, world_space_point)),
     };
     debug_text(ray::TextFormat("origin:%s direction:%s wsp:%s", v3_to_text(r.origin), v3_to_text(r.direction),v3_to_text(world_space_point)));
     return r;
 }
 
-void World::raycast_and_add_to_selection(int x, int y) {
+void World::raycast_and_modify_selection(int x, int y, bool remove_from_selection) {
     Ray r = camera.ray_from_mouse_position(x, y);
     ray::Matrix identity = ray::MatrixIdentity();
 
@@ -362,26 +362,20 @@ void World::raycast_and_add_to_selection(int x, int y) {
         if (obj_result.has_value() && (!result.has_value() || result->distance > obj_result->distance))
             result.emplace(*obj_result);
     }
-    if (!result.has_value()) return;
-
-    selection[result->obj].insert(result->index);
-}
-
-void World::raycast_and_remove_from_selection(int x, int y) {
-    Ray r = camera.ray_from_mouse_position(x, y);
-    ray::Matrix identity = ray::MatrixIdentity();
-
-    std::optional<RaycastResult> result{};
-    for (Object &obj : objects) {
-        auto obj_result = obj.raycast(r, selection_mode, identity);
-        if (obj_result.has_value() && (!result.has_value() || result->distance > obj_result->distance))
-            result.emplace(*obj_result);
+    if (!result.has_value()) {
+        if (true || debug_render) debug_text("raycast no hit");
+        return;
     }
-    if (!result.has_value()) return;
+    if (true || debug_render) {
+        debug_text(ray::TextFormat("raycast hit: name=%s pos=%s dist=%f",result->obj->name.c_str(), v3_to_text(result->hit_pos), result->distance));
+        point_queue.push_back(RenderPoint{.pos=result->hit_pos,.col=ray::YELLOW});
+    }
 
-    selection[result->obj].erase(result->index);
+    if (!remove_from_selection)
+        selection[result->obj].insert(result->index);
+    else
+        selection[result->obj].erase(result->index);
 }
-
 
 void World::render() {
     Renderer renderer{};
@@ -393,6 +387,11 @@ void World::render() {
     for(Object &obj : objects) {
         obj.add_to_render(renderer, vp_matrix, selection_mode, selection, selection_color_factor);
     }
-    
+
+    for (auto point: point_queue) {
+        renderer.add_point(vp_matrix, point);
+    }
+    point_queue.clear();
+
     renderer.draw(debug_render);
 }

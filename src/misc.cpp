@@ -79,7 +79,7 @@ Plane Triangle::get_plane() {
 }
 
 bool Triangle::is_point_on_triangle(ray::Vector3 p) {
-    return false; // todo
+    return true; // todo
 }
 
 Triangle Triangle::ccw() {

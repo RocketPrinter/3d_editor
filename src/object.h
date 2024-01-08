@@ -57,9 +57,10 @@ struct World {
     Selection selection{};
 
     bool debug_render = false;
+    // list of points to be drawn during next render() call
+    std::vector<RenderPoint> point_queue{};
 
-    void raycast_and_add_to_selection(int x, int y);
-    void raycast_and_remove_from_selection(int x, int y);
+    void raycast_and_modify_selection(int x, int y, bool remove_from_selection=false);
 
     void render();
 };

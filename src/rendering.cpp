@@ -187,6 +187,31 @@ bool Renderer::cull_or_add_to_bsp_tree(Triangle trig, ray::Color col) {
     return true;
 }
 
+void Renderer::add_point(const ray::Matrix &mvp_matrix, RenderPoint point) {
+    point.size /=2;
+    // points: {size,0,0}, {-size,0,0}, {0,size,0}, {0,-size,0}, {0,0,size}, {0,0,-size}
+    const Triangle trigs[] = {
+            {{ 1,0,0},{0, 1,0},{0,0, 1}},
+            {{ 1,0,0},{0,0,-1},{0, 1,0}},
+            {{ 1,0,0},{0,0, 1},{0,-1,0}},
+            {{ 1,0,0},{0,-1,0},{0,0,-1}},
+            {{-1,0,0},{0,0, 1},{0, 1,0}},
+            {{-1,0,0},{0, 1,0},{0,0,-1}},
+            {{-1,0,0},{0,-1,0},{0,0, 1}},
+            {{-1,0,0},{0,0,-1},{0,-1,0}},
+    };
+    for (Triangle trig: trigs) {
+        trig.v0 = ray::Vector3Add(ray::Vector3Scale(trig.v0,point.size),point.pos);
+        trig.v1 = ray::Vector3Add(ray::Vector3Scale(trig.v1,point.size),point.pos);
+        trig.v2 = ray::Vector3Add(ray::Vector3Scale(trig.v2,point.size),point.pos);
+        trig.v0 = apply_transformation(trig.v0, mvp_matrix);
+        trig.v1 = apply_transformation(trig.v1, mvp_matrix);
+        trig.v2 = apply_transformation(trig.v2, mvp_matrix);
+        cull_or_add_to_bsp_tree(trig, point.col);
+    }
+}
+
+
 void Renderer::draw(bool debug) {
     if (!root) return;
 

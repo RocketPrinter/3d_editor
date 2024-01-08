@@ -42,11 +42,6 @@ void executeSaveAsJSon();
 
 char* mesajMenu = "";
 
-// temp
-Object default_obj() {
-    return Object::new_plane();
-}
-
 void test_config(World &world);
 static World world{};
 
@@ -239,7 +234,7 @@ int main()
     ray::SetTargetFPS(60);
 
     if (not deserialize()) {
-        world.objects.push_back(default_obj());
+        world.objects.push_back(Object::new_cube());
     }
 
     // Main game loop
@@ -249,8 +244,8 @@ int main()
         ClearBackground(ray::RAYWHITE);
 
         if (ray::IsKeyPressed(ray::KEY_SLASH)) world.debug_render = !world.debug_render;
-        if (ray::IsMouseButtonDown(ray::MOUSE_BUTTON_LEFT) && !ray::IsKeyDown(ray::KEY_LEFT_SHIFT)) world.raycast_and_add_to_selection(ray::GetMouseX(), ray::GetMouseY());
-        if (ray::IsMouseButtonDown(ray::MOUSE_BUTTON_RIGHT)) world.raycast_and_add_to_selection(ray::GetMouseX(), ray::GetMouseY());
+        if (ray::IsMouseButtonDown(ray::MOUSE_BUTTON_LEFT) && !ray::IsKeyDown(ray::KEY_LEFT_SHIFT)) world.raycast_and_modify_selection(ray::GetMouseX(), ray::GetMouseY(), false);
+        if (ray::IsMouseButtonDown(ray::MOUSE_BUTTON_RIGHT)) world.raycast_and_modify_selection(ray::GetMouseX(), ray::GetMouseY(), true);
         world.camera.input_movement();
 
         world.render();
@@ -269,13 +264,17 @@ int main()
     return 0;
 }
 
-int editing=0, cube_index=0;
+int editing=0, obj_index=0, new_obj_type=0;
 void test_config(World &world) {
     auto &cam = world.camera;
-    Object &cube = world.objects[cube_index];
+    Object &cube = world.objects[obj_index];
 
     if (ray::IsKeyPressed(ray::KEY_SPACE)) {
         editing = (editing + 1) % 3;
+    }
+
+    if (ray::IsKeyPressed(ray::KEY_TAB)) {
+        new_obj_type = (new_obj_type + 1) % 6;
     }
 
     ray::Vector3 input{};
@@ -289,9 +288,30 @@ void test_config(World &world) {
     for (int i=0; i <= world.objects.size() && i < 10; i++) {
         if (ray::IsKeyPressed(ray::KEY_ZERO + i)) {
             if (i == world.objects.size()) {
-                world.objects.push_back(default_obj());
+                Object obj;
+                switch (new_obj_type) {
+                    case 0:
+                        obj = Object::new_triangle();
+                        break;
+                    case 1:
+                        obj = Object::new_plane();
+                        break;
+                    case 2:
+                        obj = Object::new_cube();
+                        break;
+                    case 3:
+                        obj = Object::new_cylinder();
+                        break;
+                    case 4:
+                        obj = Object::new_cone();
+                        break;
+                    case 5:
+                        obj = Object::new_sphere();
+                        break;
+                }
+                world.objects.push_back(obj);
             }
-            cube_index = i;
+            obj_index = i;
         }
     }
 
@@ -307,11 +327,31 @@ void test_config(World &world) {
             break;
     }
 
-    debug_text(ray::TextFormat("#%d position: %s", cube_index, v3_to_text(cube.position)),
+    switch (new_obj_type) {
+        case 0:
+            debug_text(ray::TextFormat("new obj: triangle"));
+            break;
+        case 1:
+            debug_text(ray::TextFormat("new obj: quad"));
+            break;
+        case 2:
+            debug_text(ray::TextFormat("new obj: cube"));
+            break;
+        case 3:
+            debug_text(ray::TextFormat("new obj: cylinder"));
+            break;
+        case 4:
+            debug_text(ray::TextFormat("new obj: cone"));
+            break;
+        case 5:
+            debug_text(ray::TextFormat("new obj: sphere"));
+            break;
+    }
+    debug_text(ray::TextFormat("#%d position: %s", obj_index, v3_to_text(cube.position)),
                editing == 0 ? ray::GREEN : ray::GRAY);
-    debug_text(ray::TextFormat("#%d rotation: %s", cube_index, v3_to_text(ray::QuaternionToEuler(cube.rotation))),
+    debug_text(ray::TextFormat("#%d rotation: %s", obj_index, v3_to_text(ray::QuaternionToEuler(cube.rotation))),
                editing == 1 ? ray::GREEN : ray::GRAY);
-    debug_text(ray::TextFormat("#%d scale: %s", cube_index, v3_to_text(cube.scale)),
+    debug_text(ray::TextFormat("#%d scale: %s", obj_index, v3_to_text(cube.scale)),
                editing == 2 ? ray::GREEN : ray::GRAY);
 }
 
