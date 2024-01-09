@@ -36,8 +36,8 @@ json serializeObj(Object* obj){
         objJSON["triangle_colors"].push_back(colors);
     }
     objJSON["children"]=json::array();
-    for (Object cub :obj->children) {
-        json temp = serializeObj(&cub);
+    for (Object *cub :obj->children) {
+        json temp = serializeObj(cub);
         objJSON["children"].push_back(temp);
     }
     return objJSON;
@@ -95,9 +95,9 @@ Object* deserializeObj(json &jObj){
         color.g = clrs["g"];
         obj->triangle_colors.push_back(color);
     }
-//    for (json& child:jObj["children"]){
-//        obj->children.push_back(&(deserializeObj(child)));
-//    }
+    for (json& child:jObj["children"]){
+        obj->children.push_back(deserializeObj(child));
+    }
     return obj;
 }
 

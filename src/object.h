@@ -26,7 +26,7 @@ struct Object {
     std::vector<int> triangle_indexes{}; // CCW winding order
     std::vector<ray::Color> triangle_colors{};
 
-    std::vector<Object> children{};
+    std::vector<Object*> children{};
 
     ray::Matrix get_model_matrix();
     // casts a Ray in the object and it's children and returns the result, coordinates are in world space

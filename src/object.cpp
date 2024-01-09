@@ -43,8 +43,8 @@ std::optional<RaycastResult> Object::raycast(Ray r, SelectionMode mode, ray::Mat
     }
 
     // raycasting children
-    for(Object &child : children) {
-        auto child_result = child.raycast(r, mode, world_space_matrix);
+    for(Object *child : children) {
+        auto child_result = child->raycast(r, mode, world_space_matrix);
         if (child_result.has_value() && (!result.has_value() || result->distance > child_result->distance))
             result.emplace(*child_result);
     }
@@ -100,8 +100,8 @@ void Object::add_to_render(Renderer &renderer, ray::Matrix &parent_transform, Se
     }
 
     // rendering children
-    for(Object &child : children) {
-        child.add_to_render(renderer, mvp_matrix, selection_mode, selection, selection_color_factor);
+    for(Object *child : children) {
+        child->add_to_render(renderer, mvp_matrix, selection_mode, selection, selection_color_factor);
     }
 }
 
