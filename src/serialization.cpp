@@ -1,53 +1,54 @@
 #include "serialization.h"
 
-json serializeObj(Object* cube){
-    json obj;
-    obj["name"] = cube->name;
-    obj["position"]["x"] = cube->position.x;
-    obj["position"]["y"] = cube->position.y;
-    obj["position"]["z"] = cube->position.z;
-    obj["scale"]["x"] = cube->scale.x;
-    obj["scale"]["y"] = cube->scale.y;
-    obj["scale"]["z"] = cube->scale.z;
-    obj["rotation"]["x"] = cube->rotation.x;
-    obj["rotation"]["y"] = cube->rotation.y;
-    obj["rotation"]["z"] = cube->rotation.z;
-    obj["rotation"]["w"] = cube->rotation.w;
-    obj["vertices"] = json::array();
-    for (ray::Vector3 &vert: cube->vertices) {
+json serializeObj(Object* obj){
+    json objJSON;
+    objJSON["name"] = obj->name;
+    objJSON["is_visible"] = obj->is_visible;
+    objJSON["position"]["x"] = obj->position.x;
+    objJSON["position"]["y"] = obj->position.y;
+    objJSON["position"]["z"] = obj->position.z;
+    objJSON["scale"]["x"] = obj->scale.x;
+    objJSON["scale"]["y"] = obj->scale.y;
+    objJSON["scale"]["z"] = obj->scale.z;
+    objJSON["rotation"]["x"] = obj->rotation.x;
+    objJSON["rotation"]["y"] = obj->rotation.y;
+    objJSON["rotation"]["z"] = obj->rotation.z;
+    objJSON["rotation"]["w"] = obj->rotation.w;
+    objJSON["vertices"] = json::array();
+    for (ray::Vector3 &vert: obj->vertices) {
         json vertices;
         vertices["x"] = vert.x;
         vertices["y"] = vert.y;
         vertices["z"] = vert.z;
-        obj["vertices"].push_back(vertices);
+        objJSON["vertices"].push_back(vertices);
     }
-    obj["triangle_indexes"] = json::array();
-    for (int i: cube->triangle_indexes) {
-        obj["triangle_indexes"]. push_back(i);
+    objJSON["triangle_indexes"] = json::array();
+    for (int i: obj->triangle_indexes) {
+        objJSON["triangle_indexes"]. push_back(i);
     }
-    obj["triangle_colors"] = json::array();
-    for (ray::Color &clr: cube->triangle_colors) {
+    objJSON["triangle_colors"] = json::array();
+    for (ray::Color &clr: obj->triangle_colors) {
         json colors;
         colors["r"] = clr.r;
         colors["g"] = clr.g;
         colors["b"] = clr.b;
         colors["a"] = clr.a;
-        obj["triangle_colors"].push_back(colors);
+        objJSON["triangle_colors"].push_back(colors);
     }
-    obj["children"]=json::array();
-    for (Object cub :cube->children) {
+    objJSON["children"]=json::array();
+    for (Object cub :obj->children) {
         json temp = serializeObj(&cub);
-        obj["children"].push_back(temp);
+        objJSON["children"].push_back(temp);
     }
-    return obj;
+    return objJSON;
 }
 json serialize(World &world){
     json j;
     j["objects"] = json::array();
-    for (Object* cube: world.objects) {
-        json obj;
-        obj = serializeObj(cube);
-        j["objects"].push_back(obj);
+    for (Object* obj: world.objects) {
+        json objJSON;
+        objJSON = serializeObj(obj);
+        j["objects"].push_back(objJSON);
     }
     return j;
 }
@@ -69,6 +70,7 @@ json ReadJsonFromFile(std::string file_name) {
 Object* deserializeObj(json &jObj){
     Object* obj = new Object();
     obj->name = jObj["name"] ;
+    obj->is_visible = jObj["is_visible"];
     obj->position.x = jObj["position"]["x"];
     obj->position.y = jObj["position"]["y"];
     obj->position.z = jObj["position"]["z"];

@@ -22,7 +22,7 @@ void Menu::addToMenu(Object* obj){
     ray::Rectangle rct = (ray::Rectangle){10,static_cast<float>(80 + (this->numElements * (18 + (this->numElements == 0?0:2)))),120,18};
     menuItem->rect = rct;
     menuItem->color = ray::LIGHTGRAY;
-    menuItem->text = "v "+obj->name;
+    menuItem->text = (obj->is_visible?"v ":"  ")+obj->name;
     menuItem->object = obj;
     this->menuList.push_back(menuItem);
     this->numElements += 1;
@@ -88,8 +88,7 @@ void Menu::showMenu() {
             i->color = ray::LIGHTGRAY;
         }
         if (this->isMouseLeftClickMenuItem(*i)){
-            i->clicked = !i->clicked;
-            i->object->is_visible = !i->clicked;
+            i->object->is_visible = !i->object->is_visible;
             i->text =  (i->object->is_visible?"v ":"  ") + i->object->name;
         }
         ray::DrawRectangleRec(i->rect, i->color);

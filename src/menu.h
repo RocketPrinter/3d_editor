@@ -7,7 +7,6 @@ struct MenuItem {
     ray::Color color;
     std::string text;
     Object* object;
-    bool clicked = false;
     std::list<MenuItem*> submenuList{};
 };
 struct MenuAction {

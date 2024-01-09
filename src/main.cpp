@@ -62,9 +62,8 @@ std::string mesajMenu = "";
 #include "misc.h"
 
 void test_config(World &world);
+
 static World world{};
-
-
 
 void HandleMenu(int *state, int *mainActive, int *mainFocused, int *subActive, int *scrollIndex, ray::Rectangle* menuRec){
 
