@@ -171,6 +171,7 @@ int main()
     // Main game loop
     while (!ray::WindowShouldClose())
     {
+        if (world.menu->submenuVisible) {state = APP_STATE_NORMAL;};
         ray::BeginDrawing();
         ClearBackground(ray::RAYWHITE);
 
