@@ -13,7 +13,7 @@ struct RaycastResult;
 enum class SelectionMode { Vertex, Triangle, Object };
 using Selection = std::map<Object*, std::set<int>>;
 const ray::Color SELECTION_COLOR = ray::ORANGE;
-const float SELECTION_FREQUENCY=1;
+const float SELECTION_FREQUENCY=1.5;
 
 struct Object {
     std::string name{"New object"};
@@ -44,9 +44,10 @@ struct CameraSettings {
     ray::Vector3 target{0,0,0};
     float yaw=PI/5, pitch=-PI/4.2, distance = 4, fov = PI/2.;
 
-    void input_movement();
+    ray::Vector3 get_position();
     ray::Matrix get_view_projection_matrix();
-    Ray ray_from_mouse_position(int x, int y);
+    Ray ray_from_mouse_position();
+    void input_movement();
 };
 
 struct World {
@@ -60,7 +61,7 @@ struct World {
     // list of points to be drawn during next render() call
     std::vector<RenderPoint> point_queue{};
 
-    void raycast_and_modify_selection(int x, int y, bool remove_from_selection=false);
+    void raycast_and_modify_selection(bool remove_from_selection=false);
 
     void render();
 };

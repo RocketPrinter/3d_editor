@@ -1,4 +1,7 @@
+#include <iostream>
 #include "object.h"
+
+#pragma region Object
 
 ray::Matrix Object::get_model_matrix() {
     ray::Matrix model = ray::MatrixScale(scale.x, scale.y, scale.z);
@@ -32,6 +35,7 @@ std::optional<RaycastResult> Object::raycast(Ray r, SelectionMode mode, ray::Mat
                     .v2 = transformed_vertices[triangle_indexes[i*3+2]],
             };
             Plane p = trig.get_plane();
+            if (p.distance(r.origin) < 0) continue;
             float t = p.ray_intersection(r);
             auto hit_pos = r.point_at_distance(t);
             if (!std::isfinite(t) || t < 0 || !trig.is_point_on_triangle(hit_pos)) continue;
@@ -87,7 +91,7 @@ void Object::add_to_render(Renderer &renderer, ray::Matrix &parent_transform, Se
             ray::Color col = triangle_colors[i];
             if (selection_mode == SelectionMode::Object || kvp->second.contains(i))
                 // todo: mix color
-                col = ray::ColorBrightness(SELECTION_COLOR, selection_color_factor);
+                col = lerp_color(col, SELECTION_COLOR, selection_color_factor);
 
             renderer.cull_or_add_to_bsp_tree(
                     Triangle {
@@ -103,6 +107,8 @@ void Object::add_to_render(Renderer &renderer, ray::Matrix &parent_transform, Se
         child.add_to_render(renderer, mvp_matrix, selection_mode, selection, selection_color_factor);
     }
 }
+
+#pragma endregion
 
 #pragma region new_objects
 
@@ -296,6 +302,45 @@ Object Object::new_sphere(int meridians, int parallels) {
 
 #pragma endregion
 
+#pragma region CameraSettings
+
+ray::Vector3 CameraSettings::get_position() {
+    auto offset = ray::Vector3RotateByQuaternion({0, 0, distance}, ray::QuaternionFromEuler(pitch, yaw, 0));
+    return ray::Vector3Add(offset, target);
+}
+
+
+ray::Matrix CameraSettings::get_view_projection_matrix() {
+    auto position = get_position();
+    float aspect_ratio = screenWidth / (float) screenHeight;
+    ray::Matrix matrix = ray::MatrixMultiply(
+            // view matrix
+            ray::MatrixLookAt(position, target, {0, 1, 0}),
+            // perspective projection matrix
+            ray::MatrixPerspective(fov, aspect_ratio, 0.001, 200)
+            );
+
+    // projection matrix flips the handedness for some reason so we unflip it and substract one on the z axis so it's in the range (-inf, 0]
+    matrix = ray::MatrixMultiply(matrix, ray::MatrixScale(1,-1,1));
+    matrix = ray::MatrixMultiply(matrix, ray::MatrixTranslate(0,0,-1));
+    return matrix;
+}
+
+Ray CameraSettings::ray_from_mouse_position() {
+    ray::Vector3 clip_space_point = {-2 * (0.5f - ray::GetMouseX()/(float)screenWidth),-2 * (0.5f - ray::GetMouseY()/(float)screenHeight),-0.1};
+    //debug_text(v3_to_text(clip_space_point));
+    auto origin = get_position();
+    ray::Matrix inverse_vp = ray::MatrixInvert(get_view_projection_matrix());
+    auto world_space_point = apply_transformation(clip_space_point, inverse_vp);
+    //debug_text(v3_to_text(world_space_point));
+    Ray r = {
+            .origin = origin,
+            .direction = ray::Vector3Normalize(ray::Vector3Subtract(world_space_point, origin)),
+    };
+    debug_text(ray::TextFormat("origin:%s direction:%s wsp:%s", v3_to_text(r.origin), v3_to_text(r.direction),v3_to_text(world_space_point)));
+    return r;
+}
+
 void CameraSettings::input_movement() {
     const float wasd_sensitivity = 2.3;
     const float mouse_wheel_sensitivity = 13;
@@ -321,39 +366,12 @@ void CameraSettings::input_movement() {
         pitch = std::min(std::max(pitch, -PI/2 + 0.01f), PI/2 - 0.01f);
     }
 }
+#pragma endregion
 
-ray::Matrix CameraSettings::get_view_projection_matrix() {
-    auto position = ray::Vector3RotateByQuaternion({0,0,distance}, ray::QuaternionFromEuler(pitch, yaw, 0));
-    position = ray::Vector3Add(position, target);
-    float aspect_ratio = screenWidth / (float) screenHeight;
-    ray::Matrix matrix = ray::MatrixMultiply(
-            // view matrix
-            ray::MatrixLookAt(position, target, {0, 1, 0}),
-            // perspective projection matrix
-            ray::MatrixPerspective(fov, aspect_ratio, 0.001, 200)
-            );
+#pragma region World
 
-    // projection matrix flips the handedness for some reason so we unflip it and substract one on the z axis so it's in the range (-inf, 0]
-    matrix = ray::MatrixMultiply(matrix, ray::MatrixScale(1,-1,1));
-    matrix = ray::MatrixMultiply(matrix, ray::MatrixTranslate(0,0,-1));
-    return matrix;
-}
-
-Ray CameraSettings::ray_from_mouse_position(int x, int y) {
-    ray::Vector3 clip_space_point = {(x/(float)screenWidth-0.5f)*2,(y/(float)screenHeight-0.5f)*2,-1};
-    ray::Matrix inverse_vp = ray::MatrixInvert(get_view_projection_matrix());
-    auto world_space_point = apply_transformation(clip_space_point, inverse_vp);
-    auto origin = apply_transformation({0,0,-0.001}, inverse_vp);
-    Ray r = {
-            .origin = origin,
-            .direction = ray::Vector3Normalize(ray::Vector3Subtract(origin, world_space_point)),
-    };
-    debug_text(ray::TextFormat("origin:%s direction:%s wsp:%s", v3_to_text(r.origin), v3_to_text(r.direction),v3_to_text(world_space_point)));
-    return r;
-}
-
-void World::raycast_and_modify_selection(int x, int y, bool remove_from_selection) {
-    Ray r = camera.ray_from_mouse_position(x, y);
+void World::raycast_and_modify_selection(bool remove_from_selection) {
+    Ray r = camera.ray_from_mouse_position();
     ray::Matrix identity = ray::MatrixIdentity();
 
     std::optional<RaycastResult> result{};
@@ -363,13 +381,12 @@ void World::raycast_and_modify_selection(int x, int y, bool remove_from_selectio
             result.emplace(*obj_result);
     }
     if (!result.has_value()) {
-        if (true || debug_render) debug_text("raycast no hit");
+        if (debug_render) debug_text("raycast no hit");
         return;
     }
-    if (true || debug_render) {
+    if (debug_render)
         debug_text(ray::TextFormat("raycast hit: name=%s pos=%s dist=%f",result->obj->name.c_str(), v3_to_text(result->hit_pos), result->distance));
-        point_queue.push_back(RenderPoint{.pos=result->hit_pos,.col=ray::YELLOW});
-    }
+    point_queue.push_back(RenderPoint{.pos=result->hit_pos,.col=remove_from_selection ? ray::RED : ray::YELLOW});
 
     if (!remove_from_selection)
         selection[result->obj].insert(result->index);
@@ -382,7 +399,7 @@ void World::render() {
 
     ray::Matrix vp_matrix = camera.get_view_projection_matrix();
 
-    float selection_color_factor = sin(SELECTION_FREQUENCY * ray::GetTime());
+    float selection_color_factor = ray::lerp(0.3,1.,sin(SELECTION_FREQUENCY * ray::GetTime())/2 + 0.5);
 
     for(Object &obj : objects) {
         obj.add_to_render(renderer, vp_matrix, selection_mode, selection, selection_color_factor);
@@ -395,3 +412,5 @@ void World::render() {
 
     renderer.draw(debug_render);
 }
+
+#pragma endregion

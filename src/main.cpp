@@ -6,7 +6,6 @@
 #include "object.h"
 #define RAYGUI_IMPLEMENTATION
 #include "lib/raygui.h"
-#include "serialization.h"
 
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
@@ -233,9 +232,9 @@ int main()
     ray::InitWindow(screenWidth, screenHeight, "Editor 3D");
     ray::SetTargetFPS(60);
 
-    if (not deserialize()) {
+    //if (not deserialize()) {
         world.objects.push_back(Object::new_cube());
-    }
+    //}
 
     // Main game loop
     while (!ray::WindowShouldClose())
@@ -244,8 +243,8 @@ int main()
         ClearBackground(ray::RAYWHITE);
 
         if (ray::IsKeyPressed(ray::KEY_SLASH)) world.debug_render = !world.debug_render;
-        if (ray::IsMouseButtonDown(ray::MOUSE_BUTTON_LEFT) && !ray::IsKeyDown(ray::KEY_LEFT_SHIFT)) world.raycast_and_modify_selection(ray::GetMouseX(), ray::GetMouseY(), false);
-        if (ray::IsMouseButtonDown(ray::MOUSE_BUTTON_RIGHT)) world.raycast_and_modify_selection(ray::GetMouseX(), ray::GetMouseY(), true);
+        if (ray::IsMouseButtonDown(ray::MOUSE_BUTTON_LEFT) && !ray::IsKeyDown(ray::KEY_LEFT_SHIFT)) world.raycast_and_modify_selection(false);
+        if (ray::IsMouseButtonDown(ray::MOUSE_BUTTON_RIGHT)) world.raycast_and_modify_selection(true);
         world.camera.input_movement();
 
         world.render();
@@ -253,7 +252,7 @@ int main()
 
         reset_draw_debug();
 
-        HandleMenu(&state, &mainActive, &mainFocused, &subActive, &scrollIndex, &menuRec);
+        //HandleMenu(&state, &mainActive, &mainFocused, &subActive, &scrollIndex, &menuRec);
 
         ray::DrawText( mesajMenu, 10, 90, 20, ray::DARKGRAY);
         ray::EndDrawing();
@@ -264,7 +263,7 @@ int main()
     return 0;
 }
 
-int editing=0, obj_index=0, new_obj_type=0;
+int editing=0, obj_index=0, new_obj_type=3;
 void test_config(World &world) {
     auto &cam = world.camera;
     Object &cube = world.objects[obj_index];

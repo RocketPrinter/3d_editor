@@ -79,7 +79,22 @@ Plane Triangle::get_plane() {
 }
 
 bool Triangle::is_point_on_triangle(ray::Vector3 p) {
-    return true; // todo
+    // v0 is A, v1 is B, v2 is C
+    auto AB = ray::Vector3Subtract(v1,v0);
+    auto AC = ray::Vector3Subtract(v2,v0);
+    auto AP = ray::Vector3Subtract(p, v0);
+    // versors of the plane determined by the triangle
+    auto i = ray::Vector3Normalize(AB);
+    auto j = ray::Vector3Normalize(AC);
+    // project coordinates
+    ray::Vector2 Pp = {ray::Vector3DotProduct(i,AP),ray::Vector3DotProduct(j,AP)};
+    ray::Vector2 Bp = {ray::Vector3DotProduct(i,AB),ray::Vector3DotProduct(j,AB)};
+    ray::Vector2 Cp = {ray::Vector3DotProduct(i,AC),ray::Vector3DotProduct(j,AC)};
+    // AP = i*l1+j*l2
+    float l1 = (Pp.y*Cp.x - Pp.x*Cp.y)/(Bp.y*Cp.x - Bp.x*Cp.y);
+    float l2 = (Pp.y - l1 * Bp.y)/Cp.y;
+    // p is inside the triangle if
+    return l1 >= 0 & l2 >= 0 && l1 + l2 <= 1;
 }
 
 Triangle Triangle::ccw() {
@@ -99,6 +114,15 @@ ray::Vector2 clip_to_screen_space(ray::Vector3 v3) {
     return ray::Vector2 {
             (v3.x + 1) * screenWidth / (float) 2,
             (v3.y + 1) * screenHeight / (float) 2,
+    };
+}
+
+ray::Color lerp_color(ray::Color a, ray::Color b, float t) {
+    return {
+        .r= (unsigned char) ((1-t) * (float)a.r + t * (float)b.r),
+        .g= (unsigned char) ((1-t) * (float)a.g + t * (float)b.g),
+        .b= (unsigned char) ((1-t) * (float)a.b + t * (float)b.b),
+        .a= (unsigned char) ((1-t) * (float)a.a + t * (float)b.a),
     };
 }
 #pragma endregion
