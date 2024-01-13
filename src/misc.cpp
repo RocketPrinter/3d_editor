@@ -88,7 +88,6 @@ std::optional<float> Sphere::ray_intersection(Ray r) {
 
     // solving quadratic
     float delta = b * b - 4 * a * c;
-    std::cout << delta << "\n";
     if (delta < 0) return {};
     if (delta == 0) return {-b/2*a};
     float sqrt_delta = std::sqrt(delta);

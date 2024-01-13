@@ -2,6 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <set>
 #include "misc.h"
 #include "object.h"
 #define RAYGUI_IMPLEMENTATION
@@ -263,22 +264,42 @@ int main()
     return 0;
 }
 
-int editing=0, obj_index=0, new_obj_type=3;
+int editing=0, new_obj_type=3;
 void test_config(World &world) {
-    auto &cam = world.camera;
-    Object &object = world.objects[obj_index];
-
-    if (ray::IsKeyPressed(ray::KEY_SPACE)) {
+    if (ray::IsKeyPressed(ray::KEY_SPACE))
         editing = (editing + 1) % 3;
-    }
 
-    if (ray::IsKeyPressed(ray::KEY_TAB)) {
+    if (ray::IsKeyPressed(ray::KEY_TAB))
         new_obj_type = (new_obj_type + 1) % 6;
-    }
 
     if (ray::IsKeyPressed(ray::KEY_GRAVE)) {
         world.selection_mode = (SelectionMode)(((int)world.selection_mode + 1 ) % 3);
         world.selection.clear();
+    }
+
+    if (ray::IsKeyPressed(ray::KEY_N)) {
+        Object obj;
+        switch (new_obj_type) {
+            case 0:
+                obj = Object::new_triangle();
+                break;
+            case 1:
+                obj = Object::new_plane();
+                break;
+            case 2:
+                obj = Object::new_cube();
+                break;
+            case 3:
+                obj = Object::new_cylinder();
+                break;
+            case 4:
+                obj = Object::new_cone();
+                break;
+            case 5:
+                obj = Object::new_sphere();
+                break;
+        }
+        world.objects.push_back(obj);
     }
 
     ray::Vector3 input{};
@@ -289,87 +310,75 @@ void test_config(World &world) {
     if (ray::IsKeyDown(ray::KEY_U))input.z -= 0.02;
     if (ray::IsKeyDown(ray::KEY_O))input.z += 0.02;
 
-    for (int i=0; i <= world.objects.size() && i < 10; i++) {
-        if (ray::IsKeyPressed(ray::KEY_ZERO + i)) {
-            if (i == world.objects.size()) {
-                Object obj;
-                switch (new_obj_type) {
-                    case 0:
-                        obj = Object::new_triangle();
-                        break;
-                    case 1:
-                        obj = Object::new_plane();
-                        break;
-                    case 2:
-                        obj = Object::new_cube();
-                        break;
-                    case 3:
-                        obj = Object::new_cylinder();
-                        break;
-                    case 4:
-                        obj = Object::new_cone();
-                        break;
-                    case 5:
-                        obj = Object::new_sphere();
-                        break;
-                }
-                world.objects.push_back(obj);
-            }
-            obj_index = i;
-        }
-    }
-
-    switch (editing) {
-        case 0:
-            object.position = ray::Vector3Add(object.position, input);
-            break;
-        case 1:
-            object.rotation = ray::QuaternionMultiply(ray::QuaternionFromEuler(input.x, input.y, input.z), object.rotation);
-            break;
-        case 2:
-            object.scale = ray::Vector3Add(object.scale, input);
-            break;
-    }
-
     switch (new_obj_type) {
-        case 0:
-            debug_text("new obj: triangle");
-            break;
-        case 1:
-            debug_text("new obj: quad");
-            break;
-        case 2:
-            debug_text("new obj: object");
-            break;
-        case 3:
-            debug_text("new obj: cylinder");
-            break;
-        case 4:
-            debug_text("new obj: cone");
-            break;
-        case 5:
-            debug_text("new obj: sphere");
-            break;
+        case 0:debug_text("new obj: triangle");break;
+        case 1:debug_text("new obj: quad"    );break;
+        case 2:debug_text("new obj: cube"  );break;
+        case 3:debug_text("new obj: cylinder");break;
+        case 4:debug_text("new obj: cone"    );break;
+        case 5:debug_text("new obj: sphere"  );break;
+    }
+
+    switch (world.selection_mode) {
+        case SelectionMode::Vertex:  debug_text("sel mode: vertex"  );break;
+        case SelectionMode::Triangle:debug_text("sel mode: triangle");break;
+        case SelectionMode::Object:  debug_text("sel mode: object"  );break;
     }
 
     switch (world.selection_mode) {
         case SelectionMode::Vertex:
-            debug_text("sel mode: vertex");
+            for (auto kvp: world.selection)
+                for (auto i: kvp.second) {
+                    auto &p = kvp.first->vertices[i];
+                    p = ray::Vector3Add(p, input);
+                }
             break;
+
         case SelectionMode::Triangle:
-            debug_text("sel mode: triangle");
+            for (auto kvp: world.selection) {
+                std::set<int> unique_vertices{};
+                for (auto i: kvp.second) {
+                    unique_vertices.insert(kvp.first->triangle_indexes[i*3  ]);
+                    unique_vertices.insert(kvp.first->triangle_indexes[i*3+1]);
+                    unique_vertices.insert(kvp.first->triangle_indexes[i*3+2]);
+                }
+                for (auto i: unique_vertices) {
+                    auto &p = kvp.first->vertices.at(i);
+                    p = ray::Vector3Add(p, input);
+                }
+            }
             break;
+
         case SelectionMode::Object:
-            debug_text("sel mode: object");
+            switch (editing) {
+                case 0:
+                    debug_text("editing position");
+                    break;
+                case 1:
+                    debug_text("editing rotation");
+                    break;
+                case 2:
+                    debug_text("editing scale");
+                    break;
+            }
+
+            for (auto kvp: world.selection) {
+                Object *object = kvp.first;
+
+                switch (editing) {
+                    case 0:
+                        object->position = ray::Vector3Add(object->position, input);
+                        break;
+                    case 1:
+                        object->rotation = ray::QuaternionMultiply(ray::QuaternionFromEuler(input.x, input.y, input.z), object->rotation);
+                        break;
+                    case 2:
+                        object->scale = ray::Vector3Add(object->scale, input);
+                        break;
+                }
+            }
             break;
     }
-
-    debug_text(ray::TextFormat("#%d position: %s", obj_index, v3_to_text(object.position)),
-               editing == 0 ? ray::GREEN : ray::GRAY);
-    debug_text(ray::TextFormat("#%d rotation: %s", obj_index, v3_to_text(ray::QuaternionToEuler(object.rotation))),
-               editing == 1 ? ray::GREEN : ray::GRAY);
-    debug_text(ray::TextFormat("#%d scale: %s", obj_index, v3_to_text(object.scale)),
-               editing == 2 ? ray::GREEN : ray::GRAY);
 }
 
 void executeNewProject() {
