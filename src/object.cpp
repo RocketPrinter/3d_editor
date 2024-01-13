@@ -24,7 +24,15 @@ std::optional<RaycastResult> Object::raycast(Ray r, SelectionMode mode, ray::Mat
 
     if (mode == SelectionMode::Vertex) {
         // testing a sphere around vertices
-        // todo:
+        int len = transformed_vertices.size();
+        for (int i=0;i<len;i++) {
+            Sphere s = {.center = transformed_vertices[i], .radius = 0.2f};
+            auto t = s.ray_intersection(r);
+            if (!t.has_value()) continue;
+            auto hit_pos = r.point_at_distance(t.value());
+            if (!result.has_value() || t < result->distance)
+                result.emplace(RaycastResult{.distance = t.value(), .obj = this, .hit_pos = hit_pos, .index = i});
+        }
     } else {
         // testing triangles
         int len = triangle_colors.size();
@@ -39,9 +47,8 @@ std::optional<RaycastResult> Object::raycast(Ray r, SelectionMode mode, ray::Mat
             float t = p.ray_intersection(r);
             auto hit_pos = r.point_at_distance(t);
             if (!std::isfinite(t) || t < 0 || !trig.is_point_on_triangle(hit_pos)) continue;
-            RaycastResult new_result = {.distance = t,.obj = this,.hit_pos = hit_pos,.index = i,};
-            if (!result.has_value() || new_result.distance < result->distance)
-                result.emplace(new_result);
+            if (!result.has_value() || t < result->distance)
+                result.emplace(RaycastResult{.distance = t, .obj = this, .hit_pos = hit_pos, .index = i});
         }
     }
 
@@ -67,11 +74,15 @@ void Object::add_to_render(Renderer &renderer, ray::Matrix &parent_transform, Se
     }
 
     auto kvp = selection.find(this);
-    if (kvp == selection.end()) {
-        // object is not part of selection, render normally
-
-        // rendering triangles
+    if (kvp == selection.end() || selection_mode == SelectionMode::Vertex) {
         int len = triangle_colors.size();
+        // rendering selected verices if there's any
+        if (selection_mode == SelectionMode::Vertex && kvp != selection.end())
+            for (int i : kvp->second)
+                renderer.add_point(mvp_matrix, RenderPoint{.pos = vertices[i], .size=0.2, .col=SELECTION_COLOR});
+
+
+        // rendering triangles normally
         for (int i=0; i<len;i++) {
             renderer.cull_or_add_to_bsp_tree(
                     Triangle {
@@ -81,11 +92,7 @@ void Object::add_to_render(Renderer &renderer, ray::Matrix &parent_transform, Se
                     }, triangle_colors[i]);
         }
     } else {
-        if (selection_mode == SelectionMode::Vertex) {
-            // todo: render selected vertices
-        }
-
-        // rendering triangles
+        // rendering triangles and checking if they are selected or not
         int len = triangle_colors.size();
         for (int i=0; i<len;i++) {
             ray::Color col = triangle_colors[i];
@@ -337,7 +344,7 @@ Ray CameraSettings::ray_from_mouse_position() {
             .origin = origin,
             .direction = ray::Vector3Normalize(ray::Vector3Subtract(world_space_point, origin)),
     };
-    debug_text(ray::TextFormat("origin:%s direction:%s wsp:%s", v3_to_text(r.origin), v3_to_text(r.direction),v3_to_text(world_space_point)));
+    //debug_text(ray::TextFormat("origin:%s direction:%s wsp:%s", v3_to_text(r.origin), v3_to_text(r.direction),v3_to_text(world_space_point)));
     return r;
 }
 
@@ -388,10 +395,23 @@ void World::raycast_and_modify_selection(bool remove_from_selection) {
         debug_text(ray::TextFormat("raycast hit: name=%s pos=%s dist=%f",result->obj->name.c_str(), v3_to_text(result->hit_pos), result->distance));
     point_queue.push_back(RenderPoint{.pos=result->hit_pos,.col=remove_from_selection ? ray::RED : ray::YELLOW});
 
-    if (!remove_from_selection)
-        selection[result->obj].insert(result->index);
-    else
-        selection[result->obj].erase(result->index);
+
+    if (selection_mode!=SelectionMode::Object) {
+        if (!remove_from_selection)
+            selection[result->obj].insert(result->index);
+        else {
+            auto kvp = selection.find(result->obj);
+            if (kvp == selection.end()) return;
+            kvp->second.erase(result->index);
+            if (kvp->second.size() == 0)
+                selection.erase(kvp->first);
+        }
+    } else {
+        if (!remove_from_selection)
+            selection[result->obj];
+        else
+            selection.erase(result->obj);
+    }
 }
 
 void World::render() {

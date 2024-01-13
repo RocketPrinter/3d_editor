@@ -233,7 +233,7 @@ int main()
     ray::SetTargetFPS(60);
 
     //if (not deserialize()) {
-        world.objects.push_back(Object::new_cube());
+        world.objects.push_back(Object::new_plane());
     //}
 
     // Main game loop
@@ -266,7 +266,7 @@ int main()
 int editing=0, obj_index=0, new_obj_type=3;
 void test_config(World &world) {
     auto &cam = world.camera;
-    Object &cube = world.objects[obj_index];
+    Object &object = world.objects[obj_index];
 
     if (ray::IsKeyPressed(ray::KEY_SPACE)) {
         editing = (editing + 1) % 3;
@@ -274,6 +274,11 @@ void test_config(World &world) {
 
     if (ray::IsKeyPressed(ray::KEY_TAB)) {
         new_obj_type = (new_obj_type + 1) % 6;
+    }
+
+    if (ray::IsKeyPressed(ray::KEY_GRAVE)) {
+        world.selection_mode = (SelectionMode)(((int)world.selection_mode + 1 ) % 3);
+        world.selection.clear();
     }
 
     ray::Vector3 input{};
@@ -316,41 +321,54 @@ void test_config(World &world) {
 
     switch (editing) {
         case 0:
-            cube.position = ray::Vector3Add(cube.position, input);
+            object.position = ray::Vector3Add(object.position, input);
             break;
         case 1:
-            cube.rotation = ray::QuaternionMultiply(ray::QuaternionFromEuler(input.x,input.y,input.z), cube.rotation);
+            object.rotation = ray::QuaternionMultiply(ray::QuaternionFromEuler(input.x, input.y, input.z), object.rotation);
             break;
         case 2:
-            cube.scale = ray::Vector3Add(cube.scale, input);
+            object.scale = ray::Vector3Add(object.scale, input);
             break;
     }
 
     switch (new_obj_type) {
         case 0:
-            debug_text(ray::TextFormat("new obj: triangle"));
+            debug_text("new obj: triangle");
             break;
         case 1:
-            debug_text(ray::TextFormat("new obj: quad"));
+            debug_text("new obj: quad");
             break;
         case 2:
-            debug_text(ray::TextFormat("new obj: cube"));
+            debug_text("new obj: object");
             break;
         case 3:
-            debug_text(ray::TextFormat("new obj: cylinder"));
+            debug_text("new obj: cylinder");
             break;
         case 4:
-            debug_text(ray::TextFormat("new obj: cone"));
+            debug_text("new obj: cone");
             break;
         case 5:
-            debug_text(ray::TextFormat("new obj: sphere"));
+            debug_text("new obj: sphere");
             break;
     }
-    debug_text(ray::TextFormat("#%d position: %s", obj_index, v3_to_text(cube.position)),
+
+    switch (world.selection_mode) {
+        case SelectionMode::Vertex:
+            debug_text("sel mode: vertex");
+            break;
+        case SelectionMode::Triangle:
+            debug_text("sel mode: triangle");
+            break;
+        case SelectionMode::Object:
+            debug_text("sel mode: object");
+            break;
+    }
+
+    debug_text(ray::TextFormat("#%d position: %s", obj_index, v3_to_text(object.position)),
                editing == 0 ? ray::GREEN : ray::GRAY);
-    debug_text(ray::TextFormat("#%d rotation: %s", obj_index, v3_to_text(ray::QuaternionToEuler(cube.rotation))),
+    debug_text(ray::TextFormat("#%d rotation: %s", obj_index, v3_to_text(ray::QuaternionToEuler(object.rotation))),
                editing == 1 ? ray::GREEN : ray::GRAY);
-    debug_text(ray::TextFormat("#%d scale: %s", obj_index, v3_to_text(cube.scale)),
+    debug_text(ray::TextFormat("#%d scale: %s", obj_index, v3_to_text(object.scale)),
                editing == 2 ? ray::GREEN : ray::GRAY);
 }
 

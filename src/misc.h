@@ -48,6 +48,14 @@ struct Plane {
     float ray_intersection(Ray r);
 };
 
+struct Sphere {
+    ray::Vector3 center;
+    float radius;
+
+    // returns the closest intersection point
+    std::optional<float> ray_intersection(Ray r);
+};
+
 struct Triangle {
     ray::Vector3 v0,v1,v2;
 

@@ -1,3 +1,4 @@
+#include <iostream>
 #include "misc.h"
 
 #pragma region DEBUG
@@ -77,6 +78,23 @@ Plane Triangle::get_plane() {
             .offset = -(normal.x * v0.x + normal.y * v0.y + normal.z * v0.z)
     };
 }
+
+std::optional<float> Sphere::ray_intersection(Ray r) {
+    ray::Vector3 offset = ray::Vector3Subtract(r.origin, center);
+    // getting coeficients
+    float a = ray::Vector3DotProduct(r.direction,r.direction);
+    float b = 2 * ray::Vector3DotProduct(r.direction, offset);
+    float c = ray::Vector3DotProduct(offset, offset) - radius * radius;
+
+    // solving quadratic
+    float delta = b * b - 4 * a * c;
+    std::cout << delta << "\n";
+    if (delta < 0) return {};
+    if (delta == 0) return {-b/2*a};
+    float sqrt_delta = std::sqrt(delta);
+    return {fmax(0, (-b-sqrt_delta/2*a))};
+}
+
 
 bool Triangle::is_point_on_triangle(ray::Vector3 p) {
     // v0 is A, v1 is B, v2 is C
