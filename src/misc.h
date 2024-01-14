@@ -19,6 +19,12 @@ namespace ray {
     }
 }
 
+#ifdef _WIN32
+// for some reason it's needed for the project to compile on windows
+#include <limits>
+#define MAXFLOAT  std::numeric_limits<float>::max();
+#endif
+
 const int screenWidth = 800;
 const int screenHeight = 450;
 

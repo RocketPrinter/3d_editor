@@ -1,5 +1,6 @@
 #include <iostream>
 #include "object.h"
+#include "menu.h"
 
 #pragma region Object
 
@@ -11,6 +12,8 @@ ray::Matrix Object::get_model_matrix() {
 }
 
 std::optional<RaycastResult> Object::raycast(Ray r, SelectionMode mode, ray::Matrix &parent_transform) {
+    if (!is_visible) return {};
+
     // multiplying parent transform by the model transform of this object
     ray::Matrix world_space_matrix = ray::MatrixMultiply(get_model_matrix(), parent_transform);
 
@@ -53,8 +56,8 @@ std::optional<RaycastResult> Object::raycast(Ray r, SelectionMode mode, ray::Mat
     }
 
     // raycasting children
-    for(Object &child : children) {
-        auto child_result = child.raycast(r, mode, world_space_matrix);
+    for(Object *child : children) {
+        auto child_result = child->raycast(r, mode, world_space_matrix);
         if (child_result.has_value() && (!result.has_value() || result->distance > child_result->distance))
             result.emplace(*child_result);
     }
@@ -97,7 +100,6 @@ void Object::add_to_render(Renderer &renderer, ray::Matrix &parent_transform, Se
         for (int i=0; i<len;i++) {
             ray::Color col = triangle_colors[i];
             if (selection_mode == SelectionMode::Object || kvp->second.contains(i))
-                // todo: mix color
                 col = lerp_color(col, SELECTION_COLOR, selection_color_factor);
 
             renderer.cull_or_add_to_bsp_tree(
@@ -110,8 +112,10 @@ void Object::add_to_render(Renderer &renderer, ray::Matrix &parent_transform, Se
     }
 
     // rendering children
-    for(Object &child : children) {
-        child.add_to_render(renderer, mvp_matrix, selection_mode, selection, selection_color_factor);
+    for(Object *child : children) {
+        if (child->is_visible) {
+            child->add_to_render(renderer, mvp_matrix, selection_mode, selection, selection_color_factor);
+        }
     }
 }
 
@@ -119,9 +123,9 @@ void Object::add_to_render(Renderer &renderer, ray::Matrix &parent_transform, Se
 
 #pragma region new_objects
 
-Object Object::new_triangle() {
+Object* Object::new_triangle() {
     float d = 2 * std::sqrt(2) /3.;
-    return Object {
+    return new Object {
             .name = "Triangle",
             .vertices = {
                     {0,0,2./3.},{0,-d,-1./3.},{0,d,-1./3.},
@@ -131,7 +135,7 @@ Object Object::new_triangle() {
     };
 }
 
-Object Object::new_plane(int divisions_x, int divisions_z) {
+Object* Object::new_plane(int divisions_x, int divisions_z) {
     std::vector<ray::Vector3> vertices{};
     vertices.reserve(divisions_x * divisions_z);
 
@@ -153,16 +157,16 @@ Object Object::new_plane(int divisions_x, int divisions_z) {
             triangle_colors.push_back(ray::GREEN);
         }
 
-    return {.name="Plane", .vertices = vertices, .triangle_indexes = triangle_indexes, .triangle_colors = triangle_colors};
+    return new Object{.name="Plane", .vertices = vertices, .triangle_indexes = triangle_indexes, .triangle_colors = triangle_colors};
 }
 
-Object Object::new_cube() {
+Object* Object::new_cube() {
     std::vector<ray::Color> colors = {ray::RED, ray::MAROON, ray::LIME, ray::GREEN, ray::BLUE, ray::DARKBLUE};
     for (int i=6;i<12;i++){
         colors.push_back(ray::ColorBrightness(colors[i-6],-0.7));
     }
 
-    return Object{
+    return new Object{
         .name =  "Cube",
         .vertices = {
                 {-1,-1, 1},{1,-1, 1},{-1, 1, 1},{ 1, 1, 1},
@@ -180,7 +184,7 @@ Object Object::new_cube() {
     };
 }
 
-Object Object::new_cylinder(int nr_vertices) {
+Object* Object::new_cylinder(int nr_vertices) {
     std::vector<ray::Vector3> vertices{};
     vertices.resize(nr_vertices*2);
     for (int i=0;i<nr_vertices;i++) {
@@ -219,10 +223,10 @@ Object Object::new_cylinder(int nr_vertices) {
     triangle_indexes.insert(triangle_indexes.end(), { 0,nr_vertices, 2*nr_vertices-1});
     triangle_colors.push_back(ray::LIME);
 
-    return {.name="Cylinder", .vertices = vertices, .triangle_indexes = triangle_indexes, .triangle_colors = triangle_colors};
+    return new Object{.name="Cylinder", .vertices = vertices, .triangle_indexes = triangle_indexes, .triangle_colors = triangle_colors};
 }
 
-Object Object::new_cone(int nr_vertices) {
+Object* Object::new_cone(int nr_vertices) {
     std::vector<ray::Vector3> vertices{};
     vertices.resize(nr_vertices+1);
     for (int i=0;i<nr_vertices;i++) {
@@ -250,10 +254,10 @@ Object Object::new_cone(int nr_vertices) {
         triangle_colors.push_back(ray::ColorBrightness(ray::BLUE,-1.1 + (i / (float) nr_vertices)));
     }
 
-    return {.name="Cone", .vertices = vertices, .triangle_indexes = triangle_indexes, .triangle_colors = triangle_colors};
+    return new Object{.name="Cone", .vertices = vertices, .triangle_indexes = triangle_indexes, .triangle_colors = triangle_colors};
 }
 
-Object Object::new_sphere(int meridians, int parallels) {
+Object* Object::new_sphere(int meridians, int parallels) {
     std::vector<ray::Vector3> vertices{};
     vertices.push_back({0,1,0}); // north pole, parallel 0
     for (int i=1;i<parallels;i++) {
@@ -304,7 +308,7 @@ Object Object::new_sphere(int meridians, int parallels) {
         triangle_colors.push_back({.r=(unsigned char)std::abs(center.x),.g=(unsigned char)std::abs(center.y),.b=(unsigned char)std::abs(center.z),.a=255});
     }
 
-    return {.name="Sphere", .vertices = vertices, .triangle_indexes = triangle_indexes, .triangle_colors = triangle_colors};
+    return new Object{.name="Sphere", .vertices = vertices, .triangle_indexes = triangle_indexes, .triangle_colors = triangle_colors};
 }
 
 #pragma endregion
@@ -382,8 +386,8 @@ void World::raycast_and_modify_selection(bool remove_from_selection) {
     ray::Matrix identity = ray::MatrixIdentity();
 
     std::optional<RaycastResult> result{};
-    for (Object &obj : objects) {
-        auto obj_result = obj.raycast(r, selection_mode, identity);
+    for (Object* obj : objects) {
+        auto obj_result = obj->raycast(r, selection_mode, identity);
         if (obj_result.has_value() && (!result.has_value() || result->distance > obj_result->distance))
             result.emplace(*obj_result);
     }
@@ -414,6 +418,11 @@ void World::raycast_and_modify_selection(bool remove_from_selection) {
     }
 }
 
+void World::addNewObject(Object* object){
+    this->objects.push_back(object);
+    this->menu->addToMenu(object);
+}
+
 void World::render() {
     Renderer renderer{};
 
@@ -421,8 +430,10 @@ void World::render() {
 
     float selection_color_factor = ray::lerp(0.3,1.,sin(SELECTION_FREQUENCY * ray::GetTime())/2 + 0.5);
 
-    for(Object &obj : objects) {
-        obj.add_to_render(renderer, vp_matrix, selection_mode, selection, selection_color_factor);
+    for(Object* obj : objects) {
+        if(obj->is_visible) {
+            obj->add_to_render(renderer, vp_matrix, selection_mode, selection, selection_color_factor);
+        }
     }
 
     for (auto point: point_queue) {
