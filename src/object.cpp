@@ -66,7 +66,7 @@ std::optional<RaycastResult> Object::raycast(Ray r, SelectionMode mode, ray::Mat
 }
 
 
-void Object::add_to_render(Renderer &renderer, ray::Matrix &parent_transform, SelectionMode selection_mode, Selection &selection, float selection_color_factor) {
+void Object::add_to_render(Renderer &renderer, ray::Matrix &parent_transform, float selection_color_factor, World &world) {
     // multiplying parent transform by the model transform of this object
     ray::Matrix mvp_matrix = ray::MatrixMultiply(get_model_matrix(), parent_transform);
 
@@ -76,17 +76,28 @@ void Object::add_to_render(Renderer &renderer, ray::Matrix &parent_transform, Se
         transformed_vertices.push_back(apply_transformation(v, mvp_matrix));
     }
 
-    auto kvp = selection.find(this);
-    if (kvp == selection.end() || selection_mode == SelectionMode::Vertex) {
-        int len = triangle_colors.size();
-        // rendering selected verices if there's any
-        if (selection_mode == SelectionMode::Vertex && kvp != selection.end())
+    auto kvp = world.selection.find(this);
+
+    // rendering vertices
+    if (kvp == world.selection.end() || world.selection_mode != SelectionMode::Vertex) {
+        if (world.show_vertices)
+        for (int i=0;i<transformed_vertices.size();i++)
+            renderer.add_point(mvp_matrix, RenderPoint{.pos = vertices[i], .size=0.2, .col=UNSELECTED_VERTEX_COLOR});
+    } else {
+        if (!world.show_vertices) {
             for (int i : kvp->second)
                 renderer.add_point(mvp_matrix, RenderPoint{.pos = vertices[i], .size=0.2, .col=SELECTION_COLOR});
+        } else {
+            for (int i=0;i<transformed_vertices.size();i++) {
+                renderer.add_point(mvp_matrix, RenderPoint{.pos = vertices[i], .size=0.2, .col=kvp->second.contains(i)?SELECTION_COLOR:UNSELECTED_VERTEX_COLOR});
+            }
+        }
+    }
 
-
+    // rendering triangles
+    if (kvp == world.selection.end() || world.selection_mode == SelectionMode::Vertex) {
         // rendering triangles normally
-        for (int i=0; i<len;i++) {
+        for (int i=0; i<triangle_colors.size();i++) {
             renderer.cull_or_add_to_bsp_tree(
                     Triangle {
                             .v0 = transformed_vertices[triangle_indexes[i*3  ]],
@@ -99,7 +110,7 @@ void Object::add_to_render(Renderer &renderer, ray::Matrix &parent_transform, Se
         int len = triangle_colors.size();
         for (int i=0; i<len;i++) {
             ray::Color col = triangle_colors[i];
-            if (selection_mode == SelectionMode::Object || kvp->second.contains(i))
+            if (world.selection_mode == SelectionMode::Object || kvp->second.contains(i))
                 col = lerp_color(col, SELECTION_COLOR, selection_color_factor);
 
             renderer.cull_or_add_to_bsp_tree(
@@ -114,7 +125,7 @@ void Object::add_to_render(Renderer &renderer, ray::Matrix &parent_transform, Se
     // rendering children
     for(Object *child : children) {
         if (child->is_visible) {
-            child->add_to_render(renderer, mvp_matrix, selection_mode, selection, selection_color_factor);
+            child->add_to_render(renderer, mvp_matrix, selection_color_factor, world);
         }
     }
 }
@@ -432,7 +443,7 @@ void World::render() {
 
     for(Object* obj : objects) {
         if(obj->is_visible) {
-            obj->add_to_render(renderer, vp_matrix, selection_mode, selection, selection_color_factor);
+            obj->add_to_render(renderer, vp_matrix, selection_color_factor, *this);
         }
     }
 

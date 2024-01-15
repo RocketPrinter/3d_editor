@@ -8,6 +8,7 @@
 #include "misc.h"
 
 struct Object;
+struct World;
 struct Menu;
 struct RaycastResult;
 
@@ -15,6 +16,7 @@ enum class SelectionMode { Vertex, Triangle, Object };
 enum class Operation {Translate, Rotate, Scale};
 using Selection = std::map<Object*, std::set<int>>;
 const ray::Color SELECTION_COLOR = ray::ORANGE;
+const ray::Color UNSELECTED_VERTEX_COLOR = ray::DARKGRAY;
 const float SELECTION_FREQUENCY=1.8;
 
 struct Object {
@@ -33,7 +35,7 @@ struct Object {
     ray::Matrix get_model_matrix();
     // casts a Ray in the object and it's children and returns the result, coordinates are in world space
     std::optional<RaycastResult> raycast(Ray r, SelectionMode mode, ray::Matrix &parent_transform);
-    void add_to_render(Renderer &renderer, ray::Matrix &parent_transform, SelectionMode selection_mode, Selection &selection, float selection_color_factor);
+    void add_to_render(Renderer &renderer, ray::Matrix &parent_transform, float selection_color_factor, World &world);
 
     static Object* new_triangle();
     static Object* new_plane(int divisions_x=4, int divisions_z=4);
@@ -62,6 +64,7 @@ struct World {
     Operation operation = Operation::Translate; // only matters if selection_mod is Object
     Selection selection{};
     Menu *menu;
+    bool show_vertices = false;
     bool debug_render = false;
     // list of points to be drawn during next render() call
     std::vector<RenderPoint> point_queue{};

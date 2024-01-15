@@ -67,11 +67,11 @@ void handle_input(World &world) {
     // changing operation
     if (world.selection_mode == SelectionMode::Object) {
         if (ray::IsKeyPressed(ray::KEY_FOUR))
-            world.operation = Operation::Translate, world.menu->menuActions[2]->text = "   Op: translate", world.selection.clear();
+            world.operation = Operation::Translate, world.menu->menuActions[3]->text = "   Op: translate";
         if (ray::IsKeyPressed(ray::KEY_FIVE))
-            world.operation = Operation::Rotate,    world.menu->menuActions[2]->text = "   Op: rotate",    world.selection.clear();
+            world.operation = Operation::Rotate,    world.menu->menuActions[3]->text = "   Op: rotate";
         if (ray::IsKeyPressed(ray::KEY_SIX))
-            world.operation = Operation::Scale,     world.menu->menuActions[2]->text = "   Op: scale",     world.selection.clear();
+            world.operation = Operation::Scale,     world.menu->menuActions[3]->text = "   Op: scale";
     }
 
     // clearing selection

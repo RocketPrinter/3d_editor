@@ -95,10 +95,22 @@ void Menu::initializeMenuActions(){
             },
     };
 
+    MenuAction* actionShowVertices = new MenuAction {
+            .rect = {10,50,130,18},
+            .text = "   show vertices: false",
+            .onClick = [](World* world, MenuAction *menuAction) {
+                if (world->show_vertices)
+                    world->show_vertices = false, menuAction->text = "   show vert: false";
+                else
+                    world->show_vertices = true,  menuAction->text = "   show vert: true";
+            },
+    };
+
     this->menuActions.push_back(actionAdd);
     this->menuActions.push_back(actionSave);
     this->menuActions.push_back(actionSelectionMode);
     this->menuActions.push_back(actionOperation);
+    this->menuActions.push_back(actionShowVertices);
 }
 
 void Menu::initializeSubMenuActions(){

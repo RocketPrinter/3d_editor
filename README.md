@@ -1,6 +1,6 @@
 # 3D Editor
 
-## Feateures
+## Features
 
 ## Keymap
 ```
@@ -23,3 +23,5 @@ right click - Remove from selection
 4 5 6       - Change operation (translate, rotate, scale)
 q           - Clear selection
 ijklp;      - Translate/rotate/scale selection
+
+/           - debug info mode
