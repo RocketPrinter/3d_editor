@@ -12,9 +12,10 @@ struct Menu;
 struct RaycastResult;
 
 enum class SelectionMode { Vertex, Triangle, Object };
+enum class Operation {Translate, Rotate, Scale};
 using Selection = std::map<Object*, std::set<int>>;
 const ray::Color SELECTION_COLOR = ray::ORANGE;
-const float SELECTION_FREQUENCY=1.5;
+const float SELECTION_FREQUENCY=1.8;
 
 struct Object {
     std::string name{"New object"};
@@ -58,6 +59,7 @@ struct World {
     std::vector<Object*> objects{};
 
     SelectionMode selection_mode = SelectionMode::Object;
+    Operation operation = Operation::Translate; // only matters if selection_mod is Object
     Selection selection{};
     Menu *menu;
     bool debug_render = false;

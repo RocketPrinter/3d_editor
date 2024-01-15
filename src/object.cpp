@@ -428,7 +428,7 @@ void World::render() {
 
     ray::Matrix vp_matrix = camera.get_view_projection_matrix();
 
-    float selection_color_factor = ray::lerp(0.3,1.,sin(SELECTION_FREQUENCY * ray::GetTime())/2 + 0.5);
+    float selection_color_factor = ray::lerp(0.3,0.8,sin(SELECTION_FREQUENCY * ray::GetTime())/2 + 0.5);
 
     for(Object* obj : objects) {
         if(obj->is_visible) {

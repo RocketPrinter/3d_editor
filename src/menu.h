@@ -1,6 +1,5 @@
 #pragma once
 #include <fstream>
-#include <list>
 #include <nlohmann/json.hpp>
 #include "misc.h"
 #include "object.h"
@@ -14,8 +13,7 @@ struct MenuItem {
     std::string text;
     std::string visibleBtnText;
     Object* object;
-    bool isSelectedObject = false;
-    std::list<MenuItem*> submenuList{};
+    std::vector<MenuItem*> submenuList{};
     static MenuItem* createFromObject(Object* obj);
 
 };
@@ -23,15 +21,15 @@ struct MenuAction {
     ray::Rectangle rect;
     ray::Color color = ray::LIGHTGRAY;
     std::string text;
-    std::function<void(World* world, MenuAction* menuAction)> newFunction;
+    std::function<void(World* world, MenuAction* menuAction)> onClick;
 };
 
 struct SubMenuAction {
     MenuItem* menuItem;
     ray::Rectangle rect;
-    ray::Color color;
+    ray::Color color = ray::LIGHTGRAY;
     std::string text;
-    std::function<void(World* world, MenuItem* mi, Object* obj)> newFunction;
+    std::function<void(World* world, MenuItem* mi, Object* obj)> onClick;
 };
 
 
@@ -39,18 +37,17 @@ struct Menu {
     World* world ;
     int editing=0;
     bool submenuVisible = false;
-    std::list<MenuItem*> menuList{};
-    std::list<MenuAction*> menuActions{};
-    std::list<SubMenuAction*> subMenuActions{};
-    Object* selectedObject;
+    std::vector<MenuItem*> menuList{};
+    std::vector<MenuAction*> menuActions{};
+    std::vector<SubMenuAction*> subMenuActions{};
     int numElements = 0;
     Menu();
     void setMenuActions();
-    int setMenuAlignments(std::list<MenuItem*> mList, int indexX = 0, int indexY = 0);
+    int setMenuAlignments(std::vector<MenuItem*> mList, int indexX = 0, int indexY = 0);
     void addToMenu(Object* obj);
     void addToMenuChild(MenuItem* mi,Object* obj);
     void showMenu();
-    void showMenuItem(std::list<MenuItem*> mList);
+    void showMenuItem(std::vector<MenuItem*> mList);
     bool isMouseOverMenuItem(MenuItem &menuItem);
     bool isMouseOverMenuItemVisibleBtn(MenuItem &menuItem);
     bool isMouseLeftClickMenuItemVisibleBtn(MenuItem &menuItem);
@@ -65,6 +62,4 @@ struct Menu {
     void showSubMenuActionsForAction(MenuAction &menuAction);
     void initializeSubMenuActions();
     void selectMenuItem(MenuItem &menuItem);
-    void clearMenuItemSelection(std::list<MenuItem*> mList);
-    void transformObject(Object *object);
 };

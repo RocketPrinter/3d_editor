@@ -6,45 +6,40 @@
 #include "lib/raygui.h"
 #include "misc.h"
 
-void test_config(World &world);
+void handle_input(World &world);
 
-static World world{};
-
-
-void fillMenu(Menu &menu){
-//    menu.clearMenu();
-    for(Object* obj : world.objects){
-        menu.addToMenu(obj);
-    }
-}
 int main()
 {
     ray::InitWindow(screenWidth, screenHeight, "Editor 3D");
     ray::SetTargetFPS(60);
+
+    World world;
+
     Menu menu{};
     menu.world = &world;
     world.menu = &menu;
+
     if (not deserialize(world)) {
         world.objects.push_back(Object::new_cube());
     }
-    fillMenu(*world.menu);
+
+    for(Object* obj : world.objects){
+        menu.addToMenu(obj);
+    }
+
     // Main game loop
     while (!ray::WindowShouldClose())
     {
         ray::BeginDrawing();
         ClearBackground(ray::RAYWHITE);
 
-        if (ray::IsKeyPressed(ray::KEY_SLASH)) world.debug_render = !world.debug_render;
-        if (ray::IsMouseButtonDown(ray::MOUSE_BUTTON_LEFT) && !ray::IsKeyDown(ray::KEY_LEFT_SHIFT)) world.raycast_and_modify_selection(false);
-        if (ray::IsMouseButtonDown(ray::MOUSE_BUTTON_RIGHT)) world.raycast_and_modify_selection(true);
-        world.camera.input_movement();
+        handle_input(world);
 
         world.render();
-//        test_config(world);
-
-        reset_draw_debug();
 
         menu.showMenu();
+
+        reset_draw_debug();
         ray::EndDrawing();
     }
 
@@ -53,73 +48,54 @@ int main()
     return 0;
 }
 
-int editing=0, new_obj_type=3;
-void test_config(World &world) {
-    if (ray::IsKeyPressed(ray::KEY_SPACE))
-        editing = (editing + 1) % 3;
+void handle_input(World &world) {
 
-    if (ray::IsKeyPressed(ray::KEY_TAB))
-        new_obj_type = (new_obj_type + 1) % 6;
+    world.camera.input_movement();
 
-    if (ray::IsKeyPressed(ray::KEY_GRAVE)) {
-        world.selection_mode = (SelectionMode)(((int)world.selection_mode + 1 ) % 3);
+    // adding and removing from selection
+    if (ray::IsMouseButtonDown(ray::MOUSE_BUTTON_LEFT) && !ray::IsKeyDown(ray::KEY_LEFT_SHIFT)) world.raycast_and_modify_selection(false);
+    if (ray::IsMouseButtonDown(ray::MOUSE_BUTTON_RIGHT)) world.raycast_and_modify_selection(true);
+
+    // changing selection mode
+    if (ray::IsKeyPressed(ray::KEY_ONE))
+        world.selection_mode = SelectionMode::Vertex,   world.menu->menuActions[2]->text = "   Sel mode: vertex",   world.selection.clear();
+    if (ray::IsKeyPressed(ray::KEY_TWO))
+        world.selection_mode = SelectionMode::Triangle, world.menu->menuActions[2]->text = "   Sel mode: triangle", world.selection.clear();
+    if (ray::IsKeyPressed(ray::KEY_THREE))
+        world.selection_mode = SelectionMode::Object,   world.menu->menuActions[2]->text = "   Sel mode: object",   world.selection.clear();
+
+    // changing operation
+    if (world.selection_mode == SelectionMode::Object) {
+        if (ray::IsKeyPressed(ray::KEY_FOUR))
+            world.operation = Operation::Translate, world.menu->menuActions[2]->text = "   Op: translate", world.selection.clear();
+        if (ray::IsKeyPressed(ray::KEY_FIVE))
+            world.operation = Operation::Rotate,    world.menu->menuActions[2]->text = "   Op: rotate",    world.selection.clear();
+        if (ray::IsKeyPressed(ray::KEY_SIX))
+            world.operation = Operation::Scale,     world.menu->menuActions[2]->text = "   Op: scale",     world.selection.clear();
+    }
+
+    // clearing selection
+    if (ray::IsKeyPressed(ray::KEY_Q))
         world.selection.clear();
-    }
 
-    if (ray::IsKeyPressed(ray::KEY_N)) {
-        Object* obj;
-        switch (new_obj_type) {
-            case 0:
-                obj = Object::new_triangle();
-                break;
-            case 1:
-                obj = Object::new_plane();
-                break;
-            case 2:
-                obj = Object::new_cube();
-                break;
-            case 3:
-                obj = Object::new_cylinder();
-                break;
-            case 4:
-                obj = Object::new_cone();
-                break;
-            case 5:
-                obj = Object::new_sphere();
-                break;
-        }
-        world.objects.push_back(obj);
-    }
+    // debug mode
+    if (ray::IsKeyPressed(ray::KEY_SLASH)) world.debug_render = !world.debug_render;
 
-    ray::Vector3 input{};
-    if (ray::IsKeyDown(ray::KEY_J))input.x -= 0.02;
-    if (ray::IsKeyDown(ray::KEY_L))input.x += 0.02;
-    if (ray::IsKeyDown(ray::KEY_I))input.y -= 0.02;
-    if (ray::IsKeyDown(ray::KEY_K))input.y += 0.02;
-    if (ray::IsKeyDown(ray::KEY_U))input.z -= 0.02;
-    if (ray::IsKeyDown(ray::KEY_O))input.z += 0.02;
-
-    switch (new_obj_type) {
-        case 0:debug_text("new obj: triangle");break;
-        case 1:debug_text("new obj: quad"    );break;
-        case 2:debug_text("new obj: cube"  );break;
-        case 3:debug_text("new obj: cylinder");break;
-        case 4:debug_text("new obj: cone"    );break;
-        case 5:debug_text("new obj: sphere"  );break;
-    }
-
-    switch (world.selection_mode) {
-        case SelectionMode::Vertex:  debug_text("sel mode: vertex"  );break;
-        case SelectionMode::Triangle:debug_text("sel mode: triangle");break;
-        case SelectionMode::Object:  debug_text("sel mode: object"  );break;
-    }
+    // ijklp;
+    ray::Vector3 input3d{};
+    if (ray::IsKeyDown(ray::KEY_J))input3d.x -= 0.02;
+    if (ray::IsKeyDown(ray::KEY_L))input3d.x += 0.02;
+    if (ray::IsKeyDown(ray::KEY_SEMICOLON))input3d.y -= 0.02;
+    if (ray::IsKeyDown(ray::KEY_P))input3d.y += 0.02;
+    if (ray::IsKeyDown(ray::KEY_I))input3d.z -= 0.02;
+    if (ray::IsKeyDown(ray::KEY_K))input3d.z += 0.02;
 
     switch (world.selection_mode) {
         case SelectionMode::Vertex:
             for (auto kvp: world.selection)
                 for (auto i: kvp.second) {
                     auto &p = kvp.first->vertices[i];
-                    p = ray::Vector3Add(p, input);
+                    p = ray::Vector3Add(p, input3d);
                 }
             break;
 
@@ -133,36 +109,29 @@ void test_config(World &world) {
                 }
                 for (auto i: unique_vertices) {
                     auto &p = kvp.first->vertices.at(i);
-                    p = ray::Vector3Add(p, input);
+                    p = ray::Vector3Add(p, input3d);
                 }
             }
             break;
 
         case SelectionMode::Object:
-            switch (editing) {
-                case 0:
-                    debug_text("editing position");
-                    break;
-                case 1:
-                    debug_text("editing rotation");
-                    break;
-                case 2:
-                    debug_text("editing scale");
-                    break;
-            }
-
             for (auto kvp: world.selection) {
                 Object *object = kvp.first;
 
-                switch (editing) {
-                    case 0:
-                        object->position = ray::Vector3Add(object->position, input);
+                debug_text(object->name.c_str());
+                debug_text(ray::TextFormat("position: %s", v3_to_text(object->position)));
+                debug_text(ray::TextFormat("rotation: %s", v3_to_text(ray::QuaternionToEuler(object->rotation))));
+                debug_text(ray::TextFormat("scale: %s", v3_to_text(object->scale)));
+
+                switch (world.operation) {
+                    case Operation::Translate:
+                        object->position = ray::Vector3Add(object->position, input3d);
                         break;
-                    case 1:
-                        object->rotation = ray::QuaternionMultiply(ray::QuaternionFromEuler(input.x, input.y, input.z), object->rotation);
+                    case Operation::Rotate:
+                        object->rotation = ray::QuaternionMultiply(ray::QuaternionFromEuler(input3d.x, input3d.y, input3d.z), object->rotation);
                         break;
-                    case 2:
-                        object->scale = ray::Vector3Add(object->scale, input);
+                    case Operation::Scale:
+                        object->scale = ray::Vector3Add(object->scale, input3d);
                         break;
                 }
             }
