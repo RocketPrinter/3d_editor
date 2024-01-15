@@ -21,9 +21,9 @@ struct MenuItem {
 };
 struct MenuAction {
     ray::Rectangle rect;
-    ray::Color color;
+    ray::Color color = ray::LIGHTGRAY;
     std::string text;
-    void (*newFunction)(World* world, MenuAction* menuAction);
+    std::function<void(World* world, MenuAction* menuAction)> newFunction;
 };
 
 struct SubMenuAction {
@@ -31,7 +31,7 @@ struct SubMenuAction {
     ray::Rectangle rect;
     ray::Color color;
     std::string text;
-    void (*newFunction)(World* world, MenuItem* mi, Object* obj);
+    std::function<void(World* world, MenuItem* mi, Object* obj)> newFunction;
 };
 
 
@@ -61,8 +61,8 @@ struct Menu {
     bool isMouseLeftClickMenuAction(MenuAction &menuAction);
     bool isMouseLeftClickSubMenuAction(SubMenuAction &subMenuAction);
     void initializeMenuActions();
-    void showHideSubMenuActions(MenuItem &menuItem);
-    void showHideSubMenuActionsForAction(MenuAction &menuAction);
+    void showSubMenuActions(MenuItem &menuItem);
+    void showSubMenuActionsForAction(MenuAction &menuAction);
     void initializeSubMenuActions();
     void selectMenuItem(MenuItem &menuItem);
     void clearMenuItemSelection(std::list<MenuItem*> mList);

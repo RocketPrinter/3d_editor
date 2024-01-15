@@ -4,8 +4,8 @@
 #include <optional>
 #include <map>
 #include <set>
-#include "misc.h"
 #include "rendering.h"
+#include "misc.h"
 
 struct Object;
 struct Menu;
@@ -57,7 +57,7 @@ struct World {
     CameraSettings camera{};
     std::vector<Object*> objects{};
 
-    SelectionMode selection_mode = SelectionMode::Triangle;
+    SelectionMode selection_mode = SelectionMode::Object;
     Selection selection{};
     Menu *menu;
     bool debug_render = false;

@@ -29,7 +29,7 @@ const char *trig_to_text(ray::Vector3 v0, ray::Vector3 v1, ray::Vector3 v2) {
 
 int __draw_debug_offset=0;
 void debug_text(const char *text, ray::Color color) {
-    const int pos_x=550, pos_y=40;
+    const int pos_x=700, pos_y=40;
     int overflow_width = ray::MeasureText(text, 10) - (screenWidth - pos_x);
     if (overflow_width < 0)
         ray::DrawText(text, pos_x, pos_y + __draw_debug_offset * 10, 10, color);

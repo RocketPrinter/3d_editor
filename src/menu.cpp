@@ -1,60 +1,12 @@
+#include <utility>
 #include "menu.h"
 
-void executeSaveAsJSon(World* world, MenuAction *menuAction) {
-    if(world->menu->submenuVisible) {
-        world->menu->submenuVisible = false;
-    }
-    std::ofstream jsonFile;
-    jsonFile.open("file.out", std::ofstream::out | std::ofstream::trunc);
-    if (jsonFile.is_open()) {
-        json s = serialize(*world);
-        std::string str{s.dump()};
-        jsonFile << str;
-        jsonFile.close();
-    }
-}
-void addNewObject(World* world, MenuAction *menuAction) {
-    world->menu->showHideSubMenuActionsForAction(*menuAction);
-}
-
-void addNewCubeSub(World* world, MenuItem* mi, Object* obj) {
-    Object* newCube = Object::new_cube(/*world->menu->numElements+1*/);
-    if(mi == nullptr){
-        world->addNewObject(newCube);
-    } else {
-        obj->children.push_back(newCube);
-        world->menu->addToMenuChild(mi, newCube);
-    }
-}
-void addNewTriangleSub(World* world, MenuItem* mi, Object* obj) {
-    Object* newTriangle = Object::new_triangle(/*world->menu->numElements+1*/);
-    if(mi == nullptr){
-        world->addNewObject(newTriangle);
-    } else {
-        obj->children.push_back(newTriangle);
-        world->menu->addToMenuChild(mi, newTriangle);
-    }
-}
-
-void addNewCylinderSub(World* world, MenuItem* mi, Object* obj) {
-    Object* newCylinder = Object::new_cylinder(world->menu->numElements+1);
-    if(mi == nullptr){
-        world->addNewObject(newCylinder);
-    } else {
-        obj->children.push_back(newCylinder);
-        world->menu->addToMenuChild(mi, newCylinder);
-    }
-}
-
-
 MenuItem* MenuItem::createFromObject(Object* obj){
-    int cnt = 0;
     MenuItem* menuItem = new MenuItem();
-    ray::Rectangle rct = (ray::Rectangle){20,50,120,18};
-    ray::Rectangle rctVisibleBtn = (ray::Rectangle){10,80,12,18};
+    ray::Rectangle rct = ray::Rectangle{20,10,120,18};
+    ray::Rectangle rctVisibleBtn = ray::Rectangle{10,40,12,18};
     menuItem->rect = rct;
     menuItem->rectVisibleBtn = rctVisibleBtn;
-    menuItem->color = ray::LIGHTGRAY;
     menuItem->text = obj->name;
     menuItem->visibleBtnText = (obj->is_visible?"v":" ");
     menuItem->object = obj;
@@ -91,50 +43,79 @@ void Menu::addToMenuChild(MenuItem* mi,Object* obj){
 }
 
 void Menu::initializeMenuActions(){
-    MenuAction* actionAdd = new MenuAction();
-    ray::Rectangle rctNCube = (ray::Rectangle){10,static_cast<float>(50 + (this->numElements * (18 + (this->numElements == 0?0:2)))),120,18};
-    actionAdd->rect = rctNCube;
-    actionAdd->color = ray::LIGHTGRAY;
-    actionAdd->text = "+ Add";
-    actionAdd->newFunction = addNewObject;
-    MenuAction* actionSave = new MenuAction();
-    ray::Rectangle rctSave = (ray::Rectangle){10,static_cast<float>(50 + ((this->numElements + 2) * (18 + (this->numElements == 0?0:2)))),120,18};
-    actionSave->rect = rctSave;
-    actionSave->color = ray::LIGHTGRAY;
-    actionSave->newFunction = executeSaveAsJSon;
-    actionSave->text = "    Save";
+    MenuAction* actionAdd = new MenuAction {
+        .rect = {10,50,130,18},
+        .text = "+ Add",
+        .newFunction = [](World* world, MenuAction *menuAction) {
+            world->menu->showSubMenuActionsForAction(*menuAction);
+        },
+    };
+
+    MenuAction* actionSave = new MenuAction {
+        .rect = {10,50,130,18},
+        .text = "   Save",
+        .newFunction = [](World* world, MenuAction *menuAction) {
+            world->menu->submenuVisible = false;
+            std::ofstream jsonFile;
+            jsonFile.open("save.json", std::ofstream::out | std::ofstream::trunc);
+            if (jsonFile.is_open()) {
+                json s = serialize(*world);
+                jsonFile << s;
+                jsonFile.close();
+            }
+        },
+    };
+
+    MenuAction* actionSelectionMode = new MenuAction {
+        .rect = {10,50,130,18},
+        .text = "   Sel. mode: object",
+        .newFunction = [](World* world, MenuAction *menuAction) {
+            world->selection.clear();
+            world->selection_mode = (SelectionMode) (((int)world->selection_mode + 1) % 3);
+            switch (world->selection_mode) {
+                case SelectionMode::Vertex:   menuAction->text = "   Sel mode: vertex";   break;
+                case SelectionMode::Triangle: menuAction->text = "   Sel mode: triangle"; break;
+                case SelectionMode::Object:   menuAction->text = "   Sel mode: object";   break;
+            }
+        },
+    };
 
     this->menuActions.push_back(actionAdd);
     this->menuActions.push_back(actionSave);
+    this->menuActions.push_back(actionSelectionMode);
 }
 
 void Menu::initializeSubMenuActions(){
-    SubMenuAction* actionNewCube = new SubMenuAction();
-    ray::Rectangle rctNCube = (ray::Rectangle){130,50,120,18};
-    actionNewCube->rect = rctNCube;
-    actionNewCube->color = ray::LIGHTGRAY;
-    actionNewCube->text = "+ Add new cube";
-    actionNewCube->newFunction = addNewCubeSub;
-    SubMenuAction* actionNewTriangle = new SubMenuAction();
-    ray::Rectangle rctNTriangle = (ray::Rectangle){130,70,120,18};
-    actionNewTriangle->rect = rctNTriangle;
-    actionNewTriangle->color = ray::LIGHTGRAY;
-    actionNewTriangle->text = "+ Add new triangle";
-    actionNewTriangle->newFunction = addNewTriangleSub;
-    SubMenuAction* actionNewCylinder = new SubMenuAction();
-    ray::Rectangle rctNCylinder = (ray::Rectangle){130,90,120,18};
-    actionNewCylinder->rect = rctNCylinder;
-    actionNewCylinder->color = ray::LIGHTGRAY;
-    actionNewCylinder->newFunction = addNewCylinderSub;
-    actionNewCylinder->text = "+ Add new cylinder";
+    const std::pair<std::string, std::function<Object*()> > new_functions[] = {
+            {"triangle", Object::new_triangle},
+            {"plane",    []{return Object::new_plane();}},
+            {"cube"    , Object::new_cube},
+            {"cylinder", Object::new_triangle},
+            {"cone"    , []{return Object::new_cone();}},
+            {"sphere"  , []{return Object::new_sphere(); }}
+    };
 
-    this->subMenuActions.push_back(actionNewCube);
-    this->subMenuActions.push_back(actionNewTriangle);
-    this->subMenuActions.push_back(actionNewCylinder);
+    float y_offset = 50;
+    for (auto f: new_functions) {
+        this->subMenuActions.push_back(new SubMenuAction{
+            .rect = {130,y_offset,120,18},
+            .text = "+ Add new " + f.first,
+            .newFunction = [=](World* world, MenuItem* mi, Object* obj){
+                Object *new_obj = f.second();
+                if(mi == nullptr || obj == nullptr){
+                    world->addNewObject(new_obj);
+                } else {
+                    obj->children.push_back(new_obj);
+                    world->menu->addToMenuChild(mi, new_obj);
+                }
+            }
+        });
+        y_offset += 20;
+    }
 }
 
-void Menu::showHideSubMenuActionsForAction(MenuAction &menuAction){
-    if(!this->submenuVisible) { this->submenuVisible = !this->submenuVisible; };
+void Menu::showSubMenuActionsForAction(MenuAction &menuAction) {
+    submenuVisible = true;
     int i = 0;
     for(SubMenuAction *si : this->subMenuActions){
         si->rect.x = menuAction.rect.x + menuAction.rect.width + 5;
@@ -144,8 +125,8 @@ void Menu::showHideSubMenuActionsForAction(MenuAction &menuAction){
     }
 }
 
-void Menu::showHideSubMenuActions(MenuItem &menuItem){
-    if(!this->submenuVisible) { this->submenuVisible = !this->submenuVisible; };
+void Menu::showSubMenuActions(MenuItem &menuItem) {
+    submenuVisible = true;
     int i = 0;
     for(SubMenuAction *si : this->subMenuActions){
         si->rect.x = menuItem.rect.x + menuItem.rect.width + 5;
@@ -163,7 +144,7 @@ int Menu::setMenuAlignments(std::list<MenuItem*> mList, int indexX, int indexY){
         nrRows++;
         i->rectVisibleBtn.x = 10 + (indexX * 5);
         i->rect.x = i->rectVisibleBtn.x + i->rectVisibleBtn.width + 1;
-        i->rect.y = static_cast<float>(50 + (indexY * (18 + (indexY == 0?0:2))))  ;
+        i->rect.y = static_cast<float>(10 + (indexY * (18 + (indexY == 0?0:2))))  ;
         i->rectVisibleBtn.y = i->rect.y;
         indexY++;
         idx=indexX;
@@ -177,18 +158,18 @@ int Menu::setMenuAlignments(std::list<MenuItem*> mList, int indexX, int indexY){
 void Menu::setMenuActions(){
     int idx = 0;
     for (MenuAction *i : this->menuActions){
-        i->rect.y = static_cast<float>(50 + ((this->numElements + idx) * (18 + (this->numElements == 0?0:2))))  ;
+        i->rect.y = static_cast<float>(10 + ((this->numElements + idx) * (18 + (this->numElements == 0?0:2))))  ;
         idx++;
     }
 }
 
 bool Menu::isMouseOverMenuItemVisibleBtn(MenuItem &menuItem){
     return ray::CheckCollisionPointRec(ray::GetMousePosition(),menuItem.rectVisibleBtn);
-};
+}
 
 bool Menu::isMouseLeftClickMenuItemVisibleBtn(MenuItem &menuItem){
     return isMouseOverMenuItemVisibleBtn(menuItem) && ray::IsMouseButtonPressed(ray::MOUSE_BUTTON_LEFT);
-};
+}
 
 bool Menu::isMouseOverMenuItem(MenuItem &menuItem){
     return ray::CheckCollisionPointRec(ray::GetMousePosition(),menuItem.rect);
@@ -290,7 +271,7 @@ void Menu::showMenuItem(std::list<MenuItem*> mList){
         }
 
         if (this->isMouseRightClickMenuItem(*i)){
-            showHideSubMenuActions(*i);
+            showSubMenuActions(*i);
         }
         ray::DrawRectangleRec(i->rect, i->color);
         ray::DrawText( i->text.c_str(), i->rect.x+3, i->rect.y+3, 12, ray::DARKGRAY);
@@ -338,3 +319,5 @@ void Menu::showMenu() {
     }
     transformObject(this->selectedObject);
 }
+
+#pragma clang diagnostic pop

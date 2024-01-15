@@ -102,7 +102,7 @@ Object* deserializeObj(json &jObj){
 }
 
 bool deserialize(World &world){
-    json jInput = ReadJsonFromFile("file.out");
+    json jInput = ReadJsonFromFile("save.json");
     if (jInput.empty()) {
         return false;
     }

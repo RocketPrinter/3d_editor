@@ -216,12 +216,13 @@ void Renderer::draw(bool debug) {
     if (!root) return;
 
     if (debug) {
-        ray::DrawFPS(550,20);
+        ray::SetRandomSeed(69); // prevent flickering
+        root->draw_debug(0);
+
+        ray::DrawFPS(700,20);
         debug_text(ray::TextFormat("renderer: original=%d culled=%d nodes=%d", original, culled, nodes));
         debug_text(ray::TextFormat("sliced=%d discarded=%d drawn=%d", sliced, discarded, drawn));
         original = 0, culled = 0, nodes = 0, sliced = 0, discarded = 0, drawn = 0;
-        ray::SetRandomSeed(69); // prevent flickering
-        root->draw_debug(0);
     } else
         root->draw();
 }

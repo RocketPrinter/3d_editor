@@ -25,8 +25,8 @@ namespace ray {
 #define MAXFLOAT  std::numeric_limits<float>::max();
 #endif
 
-const int screenWidth = 800;
-const int screenHeight = 450;
+const int screenWidth = 960;
+const int screenHeight = 540;
 
 /// DEBUG STUFF
 const char* v2_to_text(ray::Vector2 v);

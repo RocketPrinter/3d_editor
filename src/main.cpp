@@ -1,16 +1,10 @@
-#include <vector>
-#include <iostream>
-#include <fstream>
-#include <string>
 #include <set>
-#include "misc.h"
 #include "object.h"
-#define RAYGUI_IMPLEMENTATION
-#include "lib/raygui.h"
 #include "serialization.h"
 #include "menu.h"
-#include <nlohmann/json.hpp>
-using json = nlohmann::json;
+#define RAYGUI_IMPLEMENTATION
+#include "lib/raygui.h"
+#include "misc.h"
 
 void test_config(World &world);
 
@@ -25,7 +19,6 @@ void fillMenu(Menu &menu){
 }
 int main()
 {
-
     ray::InitWindow(screenWidth, screenHeight, "Editor 3D");
     ray::SetTargetFPS(60);
     Menu menu{};
@@ -174,15 +167,5 @@ void test_config(World &world) {
                 }
             }
             break;
-    }
-}
-void executeSaveAsJSon(){
-    std::ofstream jsonFile;
-    jsonFile.open("file.out", std::ofstream::out | std::ofstream::trunc);
-    if (jsonFile.is_open()) {
-        json s = serialize(world);
-        std::string str{s.dump()};
-        jsonFile<<str;
-        jsonFile.close();
     }
 }
