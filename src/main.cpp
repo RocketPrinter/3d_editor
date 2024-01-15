@@ -2,6 +2,7 @@
 #include "object.h"
 #include "serialization.h"
 #include "menu.h"
+#include "tool.h"
 #define RAYGUI_IMPLEMENTATION
 #include "lib/raygui.h"
 #include "misc.h"
@@ -36,6 +37,8 @@ int main()
         handle_input(world);
 
         world.render();
+
+        show_tools(world);
 
         menu.showMenu();
 
