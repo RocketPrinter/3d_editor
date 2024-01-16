@@ -61,11 +61,12 @@ struct World {
     std::vector<Object*> objects{};
 
     SelectionMode selection_mode = SelectionMode::Object;
-    Operation operation = Operation::Translate; // only matters if selection_mod is Object
+    Operation operation = Operation::Translate; // only matters if selection_mode is Object
     Selection selection{};
     Menu *menu;
     bool show_vertices = false;
     bool debug_render = false;
+    ray::Color paint_color = ray::RED;
     // list of points to be drawn during next render() call
     std::vector<RenderPoint> point_queue{};
 
