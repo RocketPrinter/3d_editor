@@ -63,12 +63,12 @@ const Tool vertex_tools[] = {
                         ray::Vector3Subtract(kvp.first->vertices[v1], v0p),
                         ray::Vector3Subtract(kvp.first->vertices[v2], v0p)
                         );
-                bool winding = ray::Vector3DotProduct(cross, ray::Vector3Subtract(v0p, world.camera.get_position())) > 0;
+                bool winding = ray::Vector3DotProduct(cross, ray::Vector3Subtract(world.camera.get_position(), v0p)) > 0;
 
                 kvp.first->triangle_indexes.push_back(v0);
                 kvp.first->triangle_indexes.push_back(winding?v1:v2);
                 kvp.first->triangle_indexes.push_back(winding?v2:v1);
-                kvp.first->triangle_colors.push_back(ray::RED);
+                kvp.first->triangle_colors.push_back(world.paint_color);
             }
         },
     },

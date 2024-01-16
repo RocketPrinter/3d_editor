@@ -34,13 +34,11 @@ int main()
         ray::BeginDrawing();
         ClearBackground(ray::RAYWHITE);
 
-        handle_input(world);
-
         world.render();
 
         show_tools(world);
-
         menu.showMenu();
+        handle_input(world);
 
         reset_draw_debug();
         ray::EndDrawing();

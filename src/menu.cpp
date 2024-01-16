@@ -60,7 +60,7 @@ void Menu::initializeMenuActions(){
             jsonFile.open("save.json", std::ofstream::out | std::ofstream::trunc);
             if (jsonFile.is_open()) {
                 json s = serialize(*world);
-                jsonFile << s;
+                jsonFile << s.dump(2);
                 jsonFile.close();
             }
         },
